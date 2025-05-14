@@ -1,0 +1,17 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# IDE's
+.idea
+
+# Virtual environments
+.venv
+
+# Vendored dependencies
+/vendor/bin
+/vendor/lib
