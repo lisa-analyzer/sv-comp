@@ -29,16 +29,17 @@ def analyse():
         tasks = json.load(f)
 
     for task in tasks:
-        command = [
-            str(config.path_to_lisa_instance),
-            "-s", str(task["input_file"]),
-            "-o", str(config.path_to_output_dir)
-        ]
+        command = f"{config.path_to_lisa_instance} -s {task['input_file']} -o {str(config.path_to_output_dir)}/jlisa/{str(task['file_name'])}"
+        #command = [
+        #    str(config.path_to_lisa_instance),
+        #    "-s", task["input_file",
+        #    "-o", str(config.path_to_output_dir) + "/jlisa/" + str(task["file_name"])
+        #]
 
-        rich.print(f"Running command: [bold blue]{' '.join(command)}[/bold blue]")
-
+        #rich.print(f"Running command: [bold blue]{' '.join(command)}[/bold blue]")
+        rich.print(f"Running command: [bold blue]{command}[/bold blue]")
         try:
-            subprocess.run(command, check=True)
+            subprocess.run(command, shell=True, check=True)
             rich.print("[green]Command executed.[/green]")
 
         except Exception as e:
