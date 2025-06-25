@@ -1,8 +1,15 @@
 ### SV-COMP Helper CLI
 
-#### Description
-
 This repository contains a command-line interface (CLI) app, written in Python v3.13 and crafted to aid LiSA and its frontends in competing in [SV-COMP](https://sv-comp.sosy-lab.org) — hence the name (abbreviated simply as `SVH`). To avoid cluttering the core implementation of LiSA with components meant solely for working with SV-COMP benchmarks, all such concerns are handled within this app.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Installation and Setup](#installation-and-setup)
+- [Quick Analysis Example](#quick-analysis-example)
+- [Development](#development)
+
+#### Overview
 
 The CLI app is built on the [Typer library](https://typer.tiangolo.com), described as the "FastAPI of the CLI world." It is a core dependency that provides a structured framework and enables the app to `speak for itself`.
 
@@ -33,7 +40,27 @@ Usage: main.py [OPTIONS] COMMAND [ARGS]...
  @ Università Ca' Foscari Venezia, Italy
 ```
 
-#### Installation & Setup
+### Quick Analysis Example
+
+There are two ways to carry out the analysis. First, the iterative (start by `python main.py`) and `SVH` will guide you through the process. Otherwise, one-enter-launch is also supported:
+
+```terminaloutput
+> python main.py analyse --help
+
+ Usage: main.py analyse [OPTIONS]
+
+ Sends collected tasks to the LiSA instance for analysis
+ 
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --benchdir  -b      PATH  Path to the SV-COMP benchmark directory                                                                    │
+│ --lisadir   -l      PATH  Path to the LiSA instance                                                                                  │
+│ --outdir    -o      PATH  Path to the output directory                                                                               │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+ 
+ > python main.py analyse -b [...] --lisadir [...] --outdir [...]
+```
+
+#### Installation and Setup
 
 `SVH` aims to be self-sufficient, with the only system requirement being that `Python` is installed and available via the conventional `python` command. All dependencies are stored in its subfolder `/vendor`. On a new system (e.g., after an initial `git clone`), it is necessary to *vendor the packages* based on the `requirements.txt` and `pyproject.toml` specifications. 
 

@@ -12,6 +12,10 @@ wheels/
 # Virtual environments
 .venv
 
+# Configuration files
+/config.json
+/output
+
 # Vendored dependencies
 /vendor/bin
 /vendor/lib
