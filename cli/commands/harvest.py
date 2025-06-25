@@ -62,14 +62,15 @@ def __construct_task_definition(paths_to_definition_files: list[str]) -> None:
         except FileNotFoundError:
             rich.print(f"[bold red]File not found:[/bold red] {path}")
             continue
-
-        input_file = (
-            config.path_to_sv_comp_benchmark_dir
-            / "java"
-            / path.parent
-            / task_data["input_files"][1]
-            / "Main.java"
-        )
+        input_files = ""
+        for file in task_data["input_files"]:
+            input_file = (
+                config.path_to_sv_comp_benchmark_dir
+                / "java"
+                / path.parent
+                / file
+            )
+            input_files = input_files + str(input_file) + " "
 
         properties = [
             Property(
@@ -82,7 +83,7 @@ def __construct_task_definition(paths_to_definition_files: list[str]) -> None:
         definitions.append(TaskDefinition(
             file_name=path.name,
             path_to_definition=path,
-            input_file=input_file,
+            input_file=input_files,
             properties=properties
         ))
 
