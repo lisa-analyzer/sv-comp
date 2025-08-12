@@ -1,5 +1,6 @@
 import os
 import pandas
+import json
 
 from pathlib import Path
 from typing import Annotated
@@ -27,15 +28,18 @@ def statistics():
     dataframe_parsing= None
     dataframe_frontend= None
     dataframe_analysis= None
-    successfull = 0
+    successfull_correct = 0
+    successfull_wrong = 0
     error_parsing = 0
     error_frontend = 0
     error_analysis = 0
+    test_cases = 0
     for dir in os.listdir(outdir):
         treated = False
         res_dir = f"{outdir}/{dir}"
         if(os.path.isdir(res_dir)):
             for file in os.listdir(res_dir):
+                test_cases = test_cases+1
                 if(file=="frontend.csv"):
                     temp = pandas.read_csv(os.path.join(res_dir, file), sep=";")[["Message", "Type"]].groupby(["Message"]).count()
                     dataframe_parsing = add_row(temp, dataframe_parsing, dir)
@@ -52,12 +56,18 @@ def statistics():
                     error_analysis = error_analysis + 1
                     treated = True
             if(treated == False):
-                successfull = successfull + 1
+                with open(f"{res_dir}/report.json", encoding="utf-8") as f:
+                    report = json.load(f)
+                if(report["result"]):
+                    successfull_correct = successfull_correct + 1
+                else:
+                    successfull_wrong = successfull_wrong + 1
     dataframe_parsing.to_csv(f"{config.path_to_output_dir}/parsing.csv")
     dataframe_frontend.to_csv(f"{config.path_to_output_dir}/frontend.csv")
     dataframe_analysis.to_csv(f"{config.path_to_output_dir}/analysis.csv")
 
-    rich.print(f"Successfull analyses: [bold green]{successfull}[/bold green]")
+    rich.print(f"Successfull analyses with the expected result: [bold green]{successfull_correct}[/bold green]")
+    rich.print(f"Successfull analyses with not the expected result: [bold yellow]{successfull_wrong}[/bold yellow]")
     rich.print(f"Parsing errors (dumped to parsing.csv): [bold red]{error_parsing}[/bold red]")
     rich.print(f"Frontend errors (dumped to frontend.csv): [bold red]{error_frontend}[/bold red]")
     rich.print(f"Analysis errors (dumped to analysis.csv): [bold red]{error_analysis}[/bold red]")

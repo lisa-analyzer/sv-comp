@@ -74,10 +74,24 @@ def __perform_analysis(tasks: list[TaskDefinition]):
                    f" -s {task.input_file}"
                    f" -o {str(config.path_to_output_dir)}/results/{str(task.file_name)}"
                    )
+        expected_result = None
+        for property in task.properties:
+            if property["property_file"].endswith("assert_java.prp"):
+                command = f"{command} -c Assert"
+                expected_result = property["expected_verdict"]
         rich.print(f"Running command: [bold blue]{command}[/bold blue]")
         try:
             subprocess.run(command, shell=True, check=True)
             rich.print("[green]Command executed.[/green]")
+            if expected_result!=None:
+                report_file = f"{str(config.path_to_output_dir)}/results/{str(task.file_name)}/report.json"
+                with open(report_file, encoding="utf-8") as f:
+                    report = json.load(f)
+                n_warns = int(report["info"]["warnings"])
+                #TODO: This is quite approximative, we should distinguish true/false positives/negatives and iterate the analysis
+                report["result"] = (n_warns>0)==expected_result
+                with open(report_file, mode="w", encoding="utf-8") as f:
+                    json.dump(report, f)
 
         except Exception as e:
             print(f"An unexpected error occurred: {e}", file=sys.stderr)
