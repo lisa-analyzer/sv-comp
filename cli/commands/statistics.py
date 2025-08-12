@@ -38,8 +38,8 @@ def statistics():
         treated = False
         res_dir = f"{outdir}/{dir}"
         if(os.path.isdir(res_dir)):
+            test_cases = test_cases+1
             for file in os.listdir(res_dir):
-                test_cases = test_cases+1
                 if(file=="frontend.csv"):
                     temp = pandas.read_csv(os.path.join(res_dir, file), sep=";")[["Message", "Type"]].groupby(["Message"]).count()
                     dataframe_parsing = add_row(temp, dataframe_parsing, dir)
@@ -66,6 +66,7 @@ def statistics():
     dataframe_frontend.to_csv(f"{config.path_to_output_dir}/frontend.csv")
     dataframe_analysis.to_csv(f"{config.path_to_output_dir}/analysis.csv")
 
+    rich.print(f"Number of test cases: [bold blue]{test_cases}[/bold blue]")
     rich.print(f"Successfull analyses with the expected result: [bold green]{successfull_correct}[/bold green]")
     rich.print(f"Successfull analyses with not the expected result: [bold yellow]{successfull_wrong}[/bold yellow]")
     rich.print(f"Parsing errors (dumped to parsing.csv): [bold red]{error_parsing}[/bold red]")
