@@ -68,7 +68,9 @@ def analyse(
 
 def __perform_analysis(tasks: list[TaskDefinition]):
     for task in tasks:
-        command = (f"{config.path_to_lisa_instance}"
+        command = (f"java "
+                   f" -cp {config.path_to_lisa_instance}"
+                   f" it.unive.jlisa.Main "
                    f" -s {task.input_file}"
                    f" -o {str(config.path_to_output_dir)}/results/{str(task.file_name)}"
                    )
