@@ -74,6 +74,7 @@ def __perform_analysis(tasks: list[TaskDefinition]):
                    f" -s {task.input_file}"
                    f" -o {str(config.path_to_output_dir)}/results/{str(task.file_name)}"
                    f" -n ConstantPropagation" #TODO This will become dynamic/a parameter at some point
+                   f" -m Statistics"
                    )
         expected_result = None
         for property in task.properties:
