@@ -62,6 +62,9 @@ def statistics():
                     successfull_correct = successfull_correct + 1
                 else:
                     successfull_wrong = successfull_wrong + 1
+    dataframe_parsing = dataframe_parsing.sort_values("Type", ascending=False)  
+    dataframe_frontend = dataframe_frontend.sort_values("Type", ascending=False)  
+    dataframe_analysis = dataframe_analysis.sort_values("Type", ascending=False)                
     dataframe_parsing.to_csv(f"{config.path_to_output_dir}/parsing.csv")
     dataframe_frontend.to_csv(f"{config.path_to_output_dir}/frontend.csv")
     dataframe_analysis.to_csv(f"{config.path_to_output_dir}/analysis.csv")
