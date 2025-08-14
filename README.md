@@ -5,9 +5,10 @@ This repository contains a command-line interface (CLI) app, written in Python v
 ## Table of Contents
 
 - [Overview](#overview)
-- [Installation and Setup](#installation-and-setup)
 - [Quick Analysis Example](#quick-analysis-example)
+- [Installation and Setup](#installation-and-setup)
 - [Development](#development)
+- [Docker](#docker)
 
 #### Overview
 
@@ -87,4 +88,18 @@ load_packages()
 
 # Afterward, you may add third-party imports. E.g.:
 import typer
+```
+
+#### Docker
+The CLI tool comes equipped with a Docker image to run the process end-to-end.
+The docker image expects:
+
+- a zip file containing the jar files obtained by the compilation of JLiSA. These can be obtained by running `gradle distZip` on the JLiSA project, and then the zip file will be in the directory `build/distributions`. Note that JLiSA must be compile with Java 21 or below.
+- a zip file containing the root of the SV-COMP Benchmarks. This can be downloaded from [here](https://gitlab.com/sosy-lab/benchmarking/sv-benchmarks/-/archive/main/sv-benchmarks-main.zip). Unfortunately, this archive is **huge**, so it is better to remove all the benchmarks that are not in the `java` subfolder.
+
+The Docker image can be run as follows
+```bash
+> docker volume create analysis_results
+> docker build -t jlisa/svcomp .
+> docker run --mount type=volume,src=analysis_results,dst=/app/output jlisa/svcomp
 ```
