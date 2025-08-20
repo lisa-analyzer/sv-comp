@@ -91,7 +91,8 @@ def __perform_analysis(tasks: list[TaskDefinition]):
                     report = json.load(f)
                 n_warns = int(report["info"]["warnings"])
                 #TODO: This is quite approximative, we should distinguish true/false positives/negatives and iterate the analysis
-                report["result"] = (n_warns>0)==expected_result
+                report["proved_safe"] = (n_warns==0)
+                report["expected_safe"] = expected_result
                 with open(report_file, mode="w", encoding="utf-8") as f:
                     json.dump(report, f)
 

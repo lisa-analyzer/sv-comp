@@ -28,8 +28,7 @@ def statistics():
     dataframe_parsing= None
     dataframe_frontend= None
     dataframe_analysis= None
-    successfull_correct = 0
-    successfull_wrong = 0
+    dataframe_score = pandas.DataFrame(columns=["Test case", "Score"])
     error_parsing = 0
     error_frontend = 0
     error_analysis = 0
@@ -58,20 +57,26 @@ def statistics():
             if(treated == False):
                 with open(f"{res_dir}/report.json", encoding="utf-8") as f:
                     report = json.load(f)
-                if(report["result"]):
-                    successfull_correct = successfull_correct + 1
+                if(report["proved_safe"]):
+                    if(report["expected_safe"]):
+                        dataframe_score.loc[-1] = [dir, 2]
+                    else:
+                        dataframe_score.loc[-1] = [dir, -16]
                 else:
-                    successfull_wrong = successfull_wrong + 1
-    dataframe_parsing = dataframe_parsing.sort_values("Type", ascending=False)  
-    dataframe_frontend = dataframe_frontend.sort_values("Type", ascending=False)  
-    dataframe_analysis = dataframe_analysis.sort_values("Type", ascending=False)                
-    dataframe_parsing.to_csv(f"{config.path_to_output_dir}/parsing.csv")
-    dataframe_frontend.to_csv(f"{config.path_to_output_dir}/frontend.csv")
-    dataframe_analysis.to_csv(f"{config.path_to_output_dir}/analysis.csv")
+                    dataframe_score.loc[-1] = [dir, 0]
+    if(dataframe_parsing is not None):
+        dataframe_parsing = dataframe_parsing.sort_values("Type", ascending=False)                
+        dataframe_parsing.to_csv(f"{config.path_to_output_dir}/parsing.csv")
+    if(dataframe_frontend is not None):
+        dataframe_frontend = dataframe_frontend.sort_values("Type", ascending=False)  
+        dataframe_frontend.to_csv(f"{config.path_to_output_dir}/frontend.csv")
+    if(dataframe_analysis is not None):
+        dataframe_analysis = dataframe_analysis.sort_values("Type", ascending=False)  
+        dataframe_analysis.to_csv(f"{config.path_to_output_dir}/analysis.csv")
+    dataframe_score.to_csv(f"{config.path_to_output_dir}/score.csv")
 
     rich.print(f"Number of test cases: [bold blue]{test_cases}[/bold blue]")
-    rich.print(f"Successfull analyses with the expected result: [bold green]{successfull_correct}[/bold green]")
-    rich.print(f"Successfull analyses with not the expected result: [bold yellow]{successfull_wrong}[/bold yellow]")
+    rich.print(f"Score: [bold green]{dataframe_score["Score"].sum()}[/bold green]")
     rich.print(f"Parsing errors (dumped to parsing.csv): [bold red]{error_parsing}[/bold red]")
     rich.print(f"Frontend errors (dumped to frontend.csv): [bold red]{error_frontend}[/bold red]")
     rich.print(f"Analysis errors (dumped to analysis.csv): [bold red]{error_analysis}[/bold red]")
