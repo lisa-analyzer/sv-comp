@@ -26,11 +26,13 @@ from cli.commands.setup import cli as setup
 from cli.commands.harvest import cli as harvest
 from cli.commands.analyse import cli as analyse
 from cli.commands.version import cli as version
+from cli.commands.statistics import cli as statistics
 
 cli.add_typer(setup)
 cli.add_typer(harvest)
 cli.add_typer(analyse)
 cli.add_typer(version)
+cli.add_typer(statistics)
 
 if __name__ == "__main__":
     cli()

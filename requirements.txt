@@ -18,3 +18,4 @@ typer==0.15.3
     # via sv-comp (pyproject.toml)
 typing-extensions==4.13.2
     # via typer
+pandas==2.3.1
