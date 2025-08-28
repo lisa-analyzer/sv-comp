@@ -6,9 +6,12 @@ ENV SVCOMP="svcomp-benchmarks-main.zip"
 
 
 # Install Java 23 from apt
-RUN apt-get update &&\
-	apt-get install -y default-jre &&\
-	apt-get install -y unzip
+#RUN apt-get update &&\
+#	apt-get install -y default-jre &&\
+#	apt-get install -y unzip
+RUN apt-get update && \
+    apt-get install -y openjdk-23-jdk unzip && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Set JAVA_HOME and update PATH
 ENV JAVA_HOME=/usr/lib/jvm/java-23-openjdk-amd64
