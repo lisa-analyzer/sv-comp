@@ -4,14 +4,13 @@ FROM python:3.13-slim
 ENV JLISA="jlisa-1.0-SNAPSHOT.zip"
 ENV SVCOMP="svcomp-benchmarks-main.zip"
 
-
-# Install Java 23 from apt
+# Install Java 25 from apt
 RUN apt-get update &&\
-	apt-get install -y default-jre &&\
+	apt-get install -y openjdk-25-jre &&\
 	apt-get install -y unzip
 
 # Set JAVA_HOME and update PATH
-ENV JAVA_HOME=/usr/lib/jvm/java-23-openjdk-amd64
+ENV JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64
 ENV PATH=$JAVA_HOME/bin:$PATH
 
 # Create a working directory

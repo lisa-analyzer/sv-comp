@@ -68,9 +68,9 @@ def analyse(
 
 def __perform_analysis(tasks: list[TaskDefinition]):
     for task in tasks:
-        command = (f"java "
+        command = (f"java"
                    f" -cp {config.path_to_lisa_instance}"
-                   f" it.unive.jlisa.Main "
+                   f" it.unive.jlisa.Main"
                    f" -s {task.input_file}"
                    f" -o {str(config.path_to_output_dir)}/results/{str(task.file_name)}"
                    f" -n ConstantPropagation" #TODO This will become dynamic/a parameter at some point
@@ -81,6 +81,7 @@ def __perform_analysis(tasks: list[TaskDefinition]):
             if property["property_file"].endswith("assert_java.prp"):
                 command = f"{command} -c Assert"
                 expected_result = property["expected_verdict"]
+
         rich.print(f"Running command: [bold blue]{command}[/bold blue]")
         try:
             subprocess.run(command, shell=True, check=True)
