@@ -64,6 +64,8 @@ def statistics():
                         dataframe_score.loc[-1] = [dir, -16]
                 else:
                     dataframe_score.loc[-1] = [dir, 0]
+                dataframe_score.index = dataframe_score.index + 1  # shifting index
+                dataframe_score = dataframe_score.sort_index()
     if(dataframe_parsing is not None):
         dataframe_parsing = dataframe_parsing.sort_values("Type", ascending=False)                
         dataframe_parsing.to_csv(f"{config.path_to_output_dir}/parsing.csv")
