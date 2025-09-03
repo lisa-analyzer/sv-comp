@@ -80,7 +80,7 @@ def __construct_task_definition(paths_to_definition_files: list[str]) -> list[Ta
             continue
 
         input_files = ""
-        for file in task_data["input_files"]:
+        for file in __filter_out_subdirs(task_data["input_files"]):
             input_file = (
                 config.path_to_sv_comp_benchmark_dir
                 / "java"
@@ -114,3 +114,17 @@ def __save_tasks(definitions: list[TaskDefinition]) -> None:
 
     rich.print("[green]Task definitions saved to[/green] [italic]tasks.json[/italic].")
     rich.print("Proceed to [bold magenta]analyse[/bold magenta] command.")
+
+
+def __filter_out_subdirs(paths) -> list[Path]:
+    """
+    Given a list of Path objects, remove any that are subdirectories of another.
+    """
+
+    paths = sorted(map(Path, paths), key=lambda p: len(p.parts))
+
+    result = []
+    for p in paths:
+        if not any(p.is_relative_to(r) for r in result):
+            result.append(p)
+    return result

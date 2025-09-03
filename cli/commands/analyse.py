@@ -1,10 +1,8 @@
 # Standard library imports
-import sys
 import json
 import subprocess
+import sys
 from pathlib import Path
-from typing import Annotated
-from typing_extensions import Optional
 
 # Load vendored packages
 from vendor.package_loader import load_packages
@@ -13,6 +11,8 @@ load_packages()
 # Third-party imports
 import rich
 import typer
+from typing import Annotated
+from typing_extensions import Optional
 
 # Project-local imports
 from cli.models.config import Config

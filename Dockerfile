@@ -33,6 +33,6 @@ RUN rm ./jlisa/jlisa.zip
 COPY ${SVCOMP} ./svcomp-benchmark/svcomp.zip
 RUN unzip ./svcomp-benchmark/svcomp.zip -d ./svcomp-benchmark/
 RUN rm ./svcomp-benchmark/svcomp.zip
-RUN mkdir ./output
+RUN mkdir -p /app/output && chmod -R 777 /app/output
 RUN python ./vendor/vendorize.py
 CMD ./run_statistics.sh
