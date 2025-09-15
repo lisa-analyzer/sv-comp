@@ -41,12 +41,38 @@ def harvest():
 
 def fetch_tasks(benchmark_dir_path_from_cli: Optional[Path] = None) -> list[TaskDefinition]:
     """
-        Main function to harvest task definitions. Left as public for other commands to use.
+        Main function to harvest task definitions. Left as public for other commands to use
     """
     raw_task_files = __harvest_tasks(benchmark_dir_path_from_cli)
     definitions = __construct_task_definition(raw_task_files)
 
     return definitions
+
+def get_tasks() -> list[TaskDefinition]:
+    """
+        Returns tasks they have been harvested and saved in tasks.json
+    """
+
+    tasks_file = config.path_to_output_dir / "tasks.json"
+    with tasks_file.open(encoding="utf-8") as f:
+        raw_tasks = json.load(f)
+
+    return [TaskDefinition(**t) for t in raw_tasks]
+
+
+def get_task(file_name: str) -> TaskDefinition | None:
+    """
+        Returns a task definition by a filename (e.g. "StringValueOf09.yml")
+    """
+    tasks_file = config.path_to_output_dir / "tasks.json"
+    with tasks_file.open(encoding="utf-8") as f:
+        raw_tasks = json.load(f)
+
+    for raw_task in raw_tasks:
+        if raw_task["file_name"] == file_name:
+            return TaskDefinition(**raw_task)
+
+    return None
 
 
 def __harvest_tasks(benchmark_dir_path_from_cli: Optional[Path] = None) -> list[str]:
