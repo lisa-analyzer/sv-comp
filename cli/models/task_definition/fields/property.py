@@ -13,3 +13,7 @@ class Property:
 
     property_file: str
     expected_verdict: bool
+
+    def __init__(self, property_file: str, expected_verdict: bool):
+        self.property_file = property_file
+        self.expected_verdict = expected_verdict
