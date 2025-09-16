@@ -26,8 +26,10 @@ config = Config.get()
 
 ASSERTIONS_TRUE = "Assertions set to TRUE"
 ASSERTIONS_FALSE = "Assertions set to FALSE"
+ASSERTION_ABSENT = "Assertion property is absent from .yml file. The score is left as zero."
 RUNTIME_TRUE = "Runtime exceptions set to TRUE"
 RUNTIME_FALSE = "Runtime exceptions set to FALSE"
+RUNTIME_ABSENT = "Runtime exceptions property is absent from .yml file. The score is left as zero."
 
 DEFINITE_WARNING = "LiSA produced a DEFINITE warning"
 DEFINITE_NOT_WARNING = "LiSA produced a DEFINITE NOT holds warning"
@@ -133,7 +135,8 @@ def __score_assertions(task: TaskDefinition, lisa_report: LisaReport) -> Tuple[i
     lisa_internal_score = 0
     due_to: List[str] = []
 
-    if task.are_assertions_expected():
+    expected = task.are_assertions_expected()
+    if expected: # TRUE
         if not lisa_report.has_assert_warnings():  # EMPTY
             # Case 9
             sv_comp_score += 2
@@ -159,7 +162,7 @@ def __score_assertions(task: TaskDefinition, lisa_report: LisaReport) -> Tuple[i
             sv_comp_score -= 16
             lisa_internal_score -= 16
             due_to.append(f"{ASSERTIONS_TRUE}, and {DEFINITE_NOT_WARNING}")
-    else:
+    elif expected is False:
         if not lisa_report.has_assert_warnings():  # EMPTY
             # Case 18
             sv_comp_score -= 32
@@ -185,6 +188,11 @@ def __score_assertions(task: TaskDefinition, lisa_report: LisaReport) -> Tuple[i
             sv_comp_score += 1
             lisa_internal_score += 1
             due_to.append(f"{ASSERTIONS_FALSE}, and {DEFINITE_NOT_WARNING}")
+    else: # PROPERTY IS ABSENT
+        # Case 31
+        sv_comp_score += 0
+        lisa_internal_score += 0
+        due_to.append(f"{ASSERTION_ABSENT}")
 
     return sv_comp_score, lisa_internal_score, due_to
 
@@ -194,7 +202,8 @@ def __score_runtime_exceptions(task: TaskDefinition, lisa_report: LisaReport) ->
     lisa_internal_score = 0
     due_to: List[str] = []
 
-    if task.are_runtime_exceptions_expected(): # TRUE
+    expected = task.are_runtime_exceptions_expected()
+    if expected: # TRUE
         if not lisa_report.has_runtime_warnings():  # EMPTY
             # Case 24
             sv_comp_score += 2
@@ -210,7 +219,7 @@ def __score_runtime_exceptions(task: TaskDefinition, lisa_report: LisaReport) ->
             sv_comp_score -= 16
             lisa_internal_score -= 16
             due_to.append(f"{RUNTIME_TRUE}, and {DEFINITE_WARNING}")
-    else: # FALSE
+    elif expected is False:
         if not lisa_report.has_runtime_warnings():  # EMPTY
             # Case 30
             sv_comp_score -= 32
@@ -226,6 +235,11 @@ def __score_runtime_exceptions(task: TaskDefinition, lisa_report: LisaReport) ->
             sv_comp_score += 1
             lisa_internal_score += 1
             due_to.append(f"{RUNTIME_FALSE}, and {DEFINITE_WARNING}")
+    else: # PROPERTY IS ABSENT
+        # Case 32
+        sv_comp_score += 0
+        lisa_internal_score += 0
+        due_to.append(f"{RUNTIME_ABSENT}")
 
     return sv_comp_score, lisa_internal_score, due_to
 
@@ -297,9 +311,9 @@ def __save_summary(
         f"Runtime: [bold green]{sv_comp_passed_runtime} passed[/bold green] / [bold yellow]{sv_comp_zero_runtime} inconclusive[/bold yellow] / [bold red]{sv_comp_failed_runtime} failed[/bold red]",
         f"Assert: [bold green]{sv_comp_passed_assert} passed[/bold green] / [bold yellow]{sv_comp_zero_assert} inconclusive[/bold yellow] / [bold red]{sv_comp_failed_assert} failed[/bold red]\n",
         f"[italic]Scores[/italic]",
-        f"Absolute score: [bold green]{score_table['SV-COMP score'].sum()}[/bold green]",
-        f"Runtime score: [bold blue]{score_table.loc[score_table['Type'] == 'runtime', 'SV-COMP score'].sum()}[/bold blue]",
-        f"Assert score: [bold yellow]{score_table.loc[score_table['Type'] == 'assert', 'SV-COMP score'].sum()}[/bold yellow]\n",
+        f"Absolute: [bold green]{score_table['SV-COMP score'].sum()}[/bold green]",
+        f"Runtime: [bold blue]{score_table.loc[score_table['Type'] == 'runtime', 'SV-COMP score'].sum()}[/bold blue]",
+        f"Assert: [bold yellow]{score_table.loc[score_table['Type'] == 'assert', 'SV-COMP score'].sum()}[/bold yellow]\n",
 
         "[bold]LiSA internal[/bold]\n",
         f"[italic]Results[/italic]",
@@ -307,9 +321,9 @@ def __save_summary(
         f"Runtime: [bold green]{lisa_passed_runtime} passed[/bold green] / [bold yellow]{lisa_zero_runtime} inconclusive[/bold yellow] / [bold red]{lisa_failed_runtime} failed[/bold red]",
         f"Assert: [bold green]{lisa_passed_assert} passed[/bold green] / [bold yellow]{lisa_zero_assert} inconclusive[/bold yellow] / [bold red]{lisa_failed_assert} failed[/bold red]\n",
         f"[italic]Scores[/italic]",
-        f"Absolute score: [bold green]{score_table['LiSA internal score'].sum()}[/bold green]",
-        f"Runtime score: [bold blue]{score_table.loc[score_table['Type'] == 'runtime', 'LiSA internal score'].sum()}[/bold blue]",
-        f"Assert score: [bold yellow]{score_table.loc[score_table['Type'] == 'assert', 'LiSA internal score'].sum()}[/bold yellow]\n",
+        f"Absolute: [bold green]{score_table['LiSA internal score'].sum()}[/bold green]",
+        f"Runtime: [bold blue]{score_table.loc[score_table['Type'] == 'runtime', 'LiSA internal score'].sum()}[/bold blue]",
+        f"Assert: [bold yellow]{score_table.loc[score_table['Type'] == 'assert', 'LiSA internal score'].sum()}[/bold yellow]\n",
 
         f"[red bold]Errors[/red bold] (check corresponding .csv files)",
         f"Parsing: [bold red]{parsing_error_counter}[/bold red]",

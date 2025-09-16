@@ -1,5 +1,5 @@
 # Standard library imports
-from typing import List
+from typing import List, Optional
 from pathlib import Path
 from dataclasses import dataclass
 
@@ -26,14 +26,14 @@ class TaskDefinition:
             for p in properties
         ]
 
-    def are_assertions_expected(self) -> bool:
+    def are_assertions_expected(self) -> Optional[bool]:
         for prop in self.properties:
             if "assert" in prop.property_file:
                 return prop.expected_verdict
-        return False
+        return None
 
-    def are_runtime_exceptions_expected(self) -> bool:
+    def are_runtime_exceptions_expected(self) -> Optional[bool]:
         for prop in self.properties:
             if "runtime-exception" in prop.property_file:
                 return prop.expected_verdict
-        return False
+        return None
