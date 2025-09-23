@@ -62,8 +62,9 @@ def analyse(
     else:
         tasks = get_tasks()
 
-    if os.path.exists(config.path_to_output_dir):
-        shutil.rmtree(config.path_to_output_dir, ignore_errors=True)
+    workdir = f"{str(config.path_to_output_dir)}/results"
+    if os.path.exists(workdir):
+        shutil.rmtree(workdir, ignore_errors=True)
 
     __perform_analysis(tasks)
 
