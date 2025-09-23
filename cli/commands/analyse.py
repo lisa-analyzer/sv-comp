@@ -2,6 +2,9 @@
 import subprocess
 import sys
 from pathlib import Path
+import time
+import shutil
+import os
 
 # Load vendored packages
 from vendor.package_loader import load_packages
@@ -59,10 +62,16 @@ def analyse(
     else:
         tasks = get_tasks()
 
+    if os.path.exists(config.path_to_output_dir):
+        shutil.rmtree(config.path_to_output_dir, ignore_errors=True)
+
     __perform_analysis(tasks)
 
 
 def __perform_analysis(tasks: list[TaskDefinition]):
+    total = len(tasks)
+    count = 1
+    start_time = time.time()
     for task in tasks:
         command = (f"java"
                    f" -cp {config.path_to_lisa_instance}"
@@ -74,10 +83,15 @@ def __perform_analysis(tasks: list[TaskDefinition]):
                    f" -c Assert" #TODO
                    )
 
-        rich.print(f"Running command: [bold blue]{command}[/bold blue]")
+        rich.print(f"Running command {count}/{total}: [bold blue]{command}[/bold blue]")
         try:
             subprocess.run(command, shell=True, check=True)
             rich.print("[green]Command executed.[/green]")
-
         except Exception as e:
             print(f"An unexpected error occurred: {e}", file=sys.stderr)
+            rich.print("[red]Command failed.[/red]")
+            
+        elapsed = time.time() - start_time
+        elapsed_hms = time.strftime('%H:%M:%S', time.gmtime(elapsed))
+        rich.print(f"[yellow]Elapsed time since beginning: {elapsed_hms}[/yellow]")
+        count += 1
