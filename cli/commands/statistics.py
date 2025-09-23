@@ -253,8 +253,9 @@ def __save_output_csvs(
 
     def __save_sorted_csv(df, filename):
         if df is not None:
-            df.sort_values("Type", ascending=False).to_csv(
-                os.path.join(config.path_to_output_dir, filename), index=False
+            sorted_df = df.sort_values("Type", ascending=False)
+            sorted_df.to_csv(
+                os.path.join(config.path_to_output_dir, filename), index=True
             )
 
     __save_sorted_csv(parsing_error_table, "parsing.csv")
