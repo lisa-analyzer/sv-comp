@@ -25,6 +25,7 @@ from cli.models.task_definition.task_definition import TaskDefinition
 cli = typer.Typer()
 config = Config.get()
 
+DEFAULT_TIMEOUT = 60 # seconds
 
 @cli.command()
 def analyse(
@@ -85,9 +86,15 @@ def __perform_analysis(tasks: list[TaskDefinition]):
                    )
 
         rich.print(f"Running command {count}/{total}: [bold blue]{command}[/bold blue]")
+        proc = subprocess.Popen(command, shell=True)
         try:
-            subprocess.run(command, shell=True, check=True)
+            proc.wait(timeout=DEFAULT_TIMEOUT)
+            if proc.returncode != 0:
+                raise subprocess.CalledProcessError(proc.returncode, command)
             rich.print("[green]Command executed.[/green]")
+        except subprocess.TimeoutExpired:
+            rich.print("[yellow]Command timed out.[/yellow]")
+            proc.kill()
         except Exception as e:
             print(f"An unexpected error occurred: {e}", file=sys.stderr)
             rich.print("[red]Command failed.[/red]")
