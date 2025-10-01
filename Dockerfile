@@ -1,7 +1,7 @@
 # Start from a Python base image
 FROM python:3.13-slim
 
-ENV JLISA="jlisa-1.0-SNAPSHOT.zip"
+ENV JLISA="jlisa-0.1.zip"
 ENV SVCOMP="svcomp-benchmarks-main.zip"
 
 # Install Java 25 from apt
