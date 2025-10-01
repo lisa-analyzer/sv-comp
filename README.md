@@ -25,17 +25,15 @@ Usage: main.py [OPTIONS] COMMAND [ARGS]...
 ╭─ Options ──────────────────────────────────────────────────────────────────╮
 │ --help          Show this message and exit.                                │
 ╰────────────────────────────────────────────────────────────────────────────╯
-╭─ Commands ─────────────────────────────────────────────────────────────────╮
-│ setup     A prompt.                                                        │
-│           Points and records (to the local config file) to essential       │
-│           directories for the tool                                         │
-│           (e.g., location of LiSA instance, SV COMP benchmark source       │
-│           files, where to output results)                                  │
-│ harvest   Harvests task definitions (.yml files) and saves them in         │
-│           tasks.json                                                       │
-│ analyse   Sends collected tasks to the LiSA instance for analysis          │
-│ version   Shows version of the CLI                                         │
-╰────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ─────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ setup        A prompt.                                                                                     │
+│              Points and records (to the local config file) to essential directories for the tool           │
+│              (e.g., location of LiSA instance, SV COMP benchmark source files, where to output results)    │
+│ harvest      Harvests task definitions (.yml files) and saves them in tasks.json                           │
+│ analyse      Sends collected tasks to the LiSA instance for analysis                                       │
+│ statistics   Computes statistics on analysis results                                                       │
+│ version      Shows a version of the LiSA's instance in use                                                 │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
  Developed and maintained by the Software and System Verification (SSV) group
  @ Università Ca' Foscari Venezia, Italy
