@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 # Load vendored packages
 from vendor.package_loader import load_packages
 load_packages()
