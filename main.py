@@ -25,12 +25,14 @@ cli = typer.Typer(
 from cli.commands.setup import cli as setup
 from cli.commands.harvest import cli as harvest
 from cli.commands.analyse import cli as analyse
+from cli.commands.check import cli as check
 from cli.commands.statistics import cli as statistics
 from cli.commands.version import cli as version
 
 cli.add_typer(setup)
 cli.add_typer(harvest)
 cli.add_typer(analyse)
+cli.add_typer(check)
 cli.add_typer(statistics)
 cli.add_typer(version)
 
