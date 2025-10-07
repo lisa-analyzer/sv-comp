@@ -34,7 +34,7 @@ def version():
     try:
         result = subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
         version = result.stdout.split(":")[1].strip()
-        rich.print(f"[dim]Verifier's (jlisa) version:[/dim] [green]{version}[/green]")
+        rich.print(f"[green]v{version}[/green]")
 
     except Exception as e:
         print(f"An unexpected error occurred: {e}", file=sys.stderr)
