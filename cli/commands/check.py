@@ -138,7 +138,7 @@ def __display_results(property: Property, lisa_report: LisaReport):
 
 def __display_assert_results(lisa_report: LisaReport):
     if not lisa_report.has_assert_warnings():
-        rich.print("[bold orange3]ASSERT[/bold orange3] [bold green]DOES HOLD[/bold green]")
+        rich.print("[bold orange3]NO ASSERT WARNING[/bold orange3]")
     elif lisa_report.has_possible_assert_warning():
         rich.print("[bold orange3]ASSERT[/bold orange3] [bold yellow]POSSIBLY HOLDS[/bold yellow]")
     elif lisa_report.check_definite_holds_and_not_holds_assert_warnings():
@@ -151,7 +151,7 @@ def __display_assert_results(lisa_report: LisaReport):
 
 def __display_runtime_results(lisa_report: LisaReport):
     if not lisa_report.has_runtime_warnings():
-        rich.print("[bold orange3]RUNTIME[/bold orange3] [bold green]DOES HOLD[/bold green]")
+        rich.print("[bold orange3]NO RUNTIME WARNING[/bold orange3]")
     elif lisa_report.has_possible_runtime_warning():
         rich.print("[bold orange3]RUNTIME[/bold orange3] [bold yellow]POSSIBLY HOLDS[/bold yellow]")
     elif lisa_report.has_definite_holds_assert_warning():
