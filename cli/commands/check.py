@@ -26,6 +26,7 @@ config = Config.get()
 # Constants
 PROPERTY_ASSERT_TEXT = "CHECK( init(Main.main()), LTL(G assert) )\n"
 PROPERTY_RUNTIME_TEXT = "CHECK(init(Main.main()), LTL(G ! uncaught(java.lang.RuntimeException)))\n"
+DEFAULT_TIMEOUT = 60 # seconds
 
 
 @cli.command()
@@ -104,15 +105,16 @@ def __run_analysis(inputs: str) -> LisaReport | None:
         f" -c Assert"
     )
 
-    try:
-        proc = subprocess.run(
-            command,
-            shell=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
+    proc = subprocess.Popen(
+        command,
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
 
+    try:
+        proc.wait(timeout=DEFAULT_TIMEOUT)
         if proc.returncode == 0:
             report_path = config.path_to_output_dir / "report.json"
             with open(report_path, encoding="utf-8") as f:
@@ -122,6 +124,11 @@ def __run_analysis(inputs: str) -> LisaReport | None:
             if proc.stderr:
                 rich.print(f"[red]Error: {proc.stderr}[/red]")
             return None
+
+    except subprocess.TimeoutExpired:
+        rich.print("[bold red]ANALYSIS TIMED OUT[/bold red]")
+        proc.kill()
+        return None
 
     except Exception as e:
         rich.print(f"[bold red]An unexpected error occurred:[/bold red] {e}")
@@ -138,7 +145,7 @@ def __display_results(property: Property, lisa_report: LisaReport):
 
 def __display_assert_results(lisa_report: LisaReport):
     if not lisa_report.has_assert_warnings():
-        rich.print("[bold orange3]NO ASSERT WARNING[/bold orange3]")
+        rich.print("[bold green]NO ASSERT WARNING[/bold green]")
     elif lisa_report.has_possible_assert_warning():
         rich.print("[bold orange3]ASSERT[/bold orange3] [bold yellow]POSSIBLY HOLDS[/bold yellow]")
     elif lisa_report.check_definite_holds_and_not_holds_assert_warnings():
@@ -151,7 +158,7 @@ def __display_assert_results(lisa_report: LisaReport):
 
 def __display_runtime_results(lisa_report: LisaReport):
     if not lisa_report.has_runtime_warnings():
-        rich.print("[bold orange3]NO RUNTIME WARNING[/bold orange3]")
+        rich.print("[bold green]NO RUNTIME WARNING[/bold green]")
     elif lisa_report.has_possible_runtime_warning():
         rich.print("[bold orange3]RUNTIME[/bold orange3] [bold yellow]POSSIBLY HOLDS[/bold yellow]")
     elif lisa_report.has_definite_holds_assert_warning():
