@@ -21,8 +21,11 @@ def get_meta_info(field: str):
     """
         Get field value from a pyproject.toml
     """
+    pyproject_path = Path(__file__).resolve().parents[2] / "pyproject.toml"
 
-    pyproject_path = Path.cwd() / "pyproject.toml"
+    if not pyproject_path.exists():
+        raise FileNotFoundError(f"pyproject.toml not found at {pyproject_path}")
+    
     with pyproject_path.open("rb") as f:
         data = tomllib.load(f)
 

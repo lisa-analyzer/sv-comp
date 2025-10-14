@@ -36,15 +36,18 @@ class Config:
             Loads configuration from a JSON file. Returns a new Config instance with the loaded settings
         """
 
-        config_file = Path.cwd() / "config.json"
+        script_dir = Path(__file__).resolve().parents[2]
+        config_file = script_dir / "config.json"
+
         if not config_file.exists():
+            rich.print(f"[bold yellow]Missing configuration file.[/bold yellow]")
             return cls()
 
         config_dict = json.loads(config_file.read_text())
         return cls(
             path_to_sv_comp_benchmark_dir=Path(config_dict.get('path_to_sv_comp_benchmark_dir')) if config_dict.get(
                 'path_to_sv_comp_benchmark_dir') else None,
-            path_to_lisa_instance=Path(config_dict.get('path_to_lisa_instance')) if config_dict.get(
+            path_to_lisa_instance=Path(str(Path(__file__).resolve().parents[2]) + "/" + config_dict.get('path_to_lisa_instance')) if config_dict.get(
                 'path_to_lisa_instance') else None,
             path_to_output_dir=Path(config_dict.get('path_to_output_dir')) if config_dict.get(
                 'path_to_output_dir') else None

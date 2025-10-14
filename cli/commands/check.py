@@ -95,9 +95,7 @@ def __validate_input_paths(inputs: str) -> list[Path]:
 
 def __run_analysis(inputs: str) -> LisaReport | None:
     command = (
-        f"java"
-        f" -cp {config.path_to_lisa_instance}"
-        f" it.unive.jlisa.Main"
+        f" {config.path_to_lisa_instance}"
         f" -s {inputs}"
         f" -o {config.path_to_output_dir}"
         f" -n ConstantPropagation"
@@ -122,8 +120,9 @@ def __run_analysis(inputs: str) -> LisaReport | None:
         else:
             rich.print(f"[bold red]LiSA analysis failed with exit code {proc.returncode}[/bold red]")
             if proc.stderr:
-                rich.print(f"[red]Error: {proc.stderr}[/red]")
-            return None
+                error_output = proc.stderr.read().strip()
+                rich.print(f"[red]Error: {error_output}[/red]")
+        return None
 
     except subprocess.TimeoutExpired:
         rich.print("[bold red]ANALYSIS TIMED OUT[/bold red]")
