@@ -101,6 +101,7 @@ def __run_analysis(inputs: str) -> LisaReport | None:
         f" -n ConstantPropagation"
         f" -m Statistics"
         f" -c Assert"
+        f" --no-html"
     )
 
     proc = subprocess.Popen(
@@ -110,7 +111,6 @@ def __run_analysis(inputs: str) -> LisaReport | None:
         stderr=subprocess.PIPE,
         text=True
     )
-
     try:
         proc.wait(timeout=DEFAULT_TIMEOUT)
         if proc.returncode == 0:

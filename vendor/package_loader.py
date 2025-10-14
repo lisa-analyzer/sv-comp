@@ -8,7 +8,8 @@ def load_packages():
     """
 
     parent_dir = os.path.abspath(os.path.dirname(__file__))
-    vendor_dir = os.path.join(parent_dir, f"../vendor/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages")
+    #vendor_dir = os.path.join(parent_dir, f"../vendor/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages")
+    vendor_dir = os.path.join(parent_dir, "../vendor/lib/site-packages")
     vendor_dir = os.path.normpath(vendor_dir)
 
     if os.path.exists(vendor_dir):
