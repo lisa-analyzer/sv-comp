@@ -29,7 +29,7 @@ def version():
                    "Run [bold]setup[/bold] first and make sure that LiSA instance is specified!")
         raise typer.Exit()
 
-    command = f"java -cp {config.path_to_lisa_instance} it.unive.jlisa.Main -v"
+    command = f"{config.path_to_lisa_instance} -v"
 
     try:
         result = subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
