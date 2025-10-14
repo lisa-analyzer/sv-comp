@@ -1,4 +1,4 @@
-### SV-COMP Helper CLI
+### SV-COMP Helper CLI for LiSA
 
 This repository contains a command-line interface (CLI) app, written in Python v3.13 and crafted to aid LiSA and its frontends in competing in [SV-COMP](https://sv-comp.sosy-lab.org) — hence the name (abbreviated simply as `SVH`). To avoid cluttering the core implementation of LiSA with components meant solely for working with SV-COMP benchmarks, all such concerns are handled within this app.
 
@@ -25,15 +25,16 @@ Usage: main.py [OPTIONS] COMMAND [ARGS]...
 ╭─ Options ──────────────────────────────────────────────────────────────────╮
 │ --help          Show this message and exit.                                │
 ╰────────────────────────────────────────────────────────────────────────────╯
-╭─ Commands ─────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ setup        A prompt.                                                                                     │
-│              Points and records (to the local config file) to essential directories for the tool           │
-│              (e.g., location of LiSA instance, SV COMP benchmark source files, where to output results)    │
-│ harvest      Harvests task definitions (.yml files) and saves them in tasks.json                           │
-│ analyse      Sends collected tasks to the LiSA instance for analysis                                       │
-│ statistics   Computes statistics on analysis results                                                       │
-│ version      Shows a version of the LiSA's instance in use                                                 │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ setup        A prompt.                                                                                                                                                                         │
+│              Points and records (to the local config file) to essential directories for the tool                                                                                               │
+│              (e.g., location of LiSA instance, SV COMP benchmark source files, where to output results)                                                                                        │
+│ harvest      Harvests task definitions (.yml files) and saves them in tasks.json                                                                                                               │
+│ analyse      Sends collected tasks to the LiSA instance for analysis                                                                                                                           │
+│ check        Check input files against a specified property                                                                                                                                    │
+│ statistics   Computes statistics on analysis results                                                                                                                                           │
+│ version      Shows a version of the LiSA's instance in use                                                                                                                                     │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
  Developed and maintained by the Software and System Verification (SSV) group
  @ Università Ca' Foscari Venezia, Italy

@@ -43,7 +43,7 @@ def check(
             "--property",
             help="Provide path to the property file or property name to check")):
     """
-    Check input files against a specified property.
+    Check input files against a specified property
     """
 
     __clean_output_directory()
