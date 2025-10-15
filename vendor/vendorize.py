@@ -15,8 +15,8 @@ def vendorize() -> None:
         print("Requirements.txt not found.")
         sys.exit(1)
 
-    #version = f"python{sys.version_info.major}.{sys.version_info.minor}"
-    target = project_root / "vendor" / "lib" / "site-packages"
+    version = f"python{sys.version_info.major}.{sys.version_info.minor}"
+    target = project_root / "vendor" / "lib" / version / "site-packages"
 
     if target.exists():
         print(f"Removing existing vendor folder: {target}")
