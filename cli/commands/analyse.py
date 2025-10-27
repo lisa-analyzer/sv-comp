@@ -25,7 +25,7 @@ from cli.models.task_definition.task_definition import TaskDefinition
 cli = typer.Typer()
 config = Config.get()
 
-DEFAULT_TIMEOUT = 60 # seconds
+DEFAULT_TIMEOUT = 5 * 60 # 5 minutes
 
 @cli.command()
 def analyse(
@@ -76,6 +76,11 @@ def __perform_analysis(tasks: list[TaskDefinition]):
     start_time = time.time()
     for task in tasks:
         command = (f"java"
+                   f" -Xmx10G"
+                   f" -XX:+UseStringDeduplication"
+                   f" -XX:+UseCompressedOops"
+                   f" -XX:+UnlockExperimentalVMOptions"
+                   f" -XX:+UseContainerSupport"
                    f" -cp {config.path_to_lisa_instance}"
                    f" it.unive.jlisa.Main"
                    f" -s {task.input_file}"
