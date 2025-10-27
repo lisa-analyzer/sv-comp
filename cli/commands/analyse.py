@@ -5,6 +5,7 @@ from pathlib import Path
 import time
 import shutil
 import os
+import signal
 
 # Load vendored packages
 from vendor.package_loader import load_packages
@@ -74,13 +75,11 @@ def __perform_analysis(tasks: list[TaskDefinition]):
     total = len(tasks)
     count = 1
     start_time = time.time()
+    timed_out = []
+    
     for task in tasks:
         command = (f"java"
                    f" -Xmx10G"
-                   f" -XX:+UseStringDeduplication"
-                   f" -XX:+UseCompressedOops"
-                   f" -XX:+UnlockExperimentalVMOptions"
-                   f" -XX:+UseContainerSupport"
                    f" -cp {config.path_to_lisa_instance}"
                    f" it.unive.jlisa.Main"
                    f" -s {task.input_file}"
@@ -91,15 +90,18 @@ def __perform_analysis(tasks: list[TaskDefinition]):
                    )
 
         rich.print(f"Running command {count}/{total}: [bold blue]{command}[/bold blue]")
-        proc = subprocess.Popen(command, shell=True)
+        proc = subprocess.Popen(command, shell=True, preexec_fn=os.setsid)
         try:
             proc.wait(timeout=DEFAULT_TIMEOUT)
             if proc.returncode != 0:
                 raise subprocess.CalledProcessError(proc.returncode, command)
             rich.print("[green]Command executed.[/green]")
         except subprocess.TimeoutExpired:
-            rich.print("[yellow]Command timed out.[/yellow]")
-            proc.kill()
+            rich.print("[yellow]Command timed out, waiting for termination...[/yellow]")
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            proc.wait()
+            timed_out.append(str(task.file_name))
+            rich.print("[yellow]Terminated.[/yellow]")
         except Exception as e:
             print(f"An unexpected error occurred: {e}", file=sys.stderr)
             rich.print("[red]Command failed.[/red]")
@@ -108,3 +110,10 @@ def __perform_analysis(tasks: list[TaskDefinition]):
         elapsed_hms = time.strftime('%H:%M:%S', time.gmtime(elapsed))
         rich.print(f"[yellow]Elapsed time since beginning: {elapsed_hms}[/yellow]")
         count += 1
+    
+    if timed_out:
+        rich.print("[red]The following tasks timed out:[/red]")
+        with open(f"{str(config.path_to_output_dir)}/timed_out.txt", 'w') as f:
+            for t in timed_out:
+                rich.print(f"[red]- {t}[/red]")
+                f.write(f"{t}\n")

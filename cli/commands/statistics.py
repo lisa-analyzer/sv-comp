@@ -88,9 +88,15 @@ def statistics():
         if not treated:
             this_iteration_df = __compute_score(results_dir, dir_name)
             score_table = score_table._append(this_iteration_df)
+                
+
+    timed_out_tasks = []
+    if os.path.exists(f"{str(config.path_to_output_dir)}/timed_out.txt"):
+        with open(f"{str(config.path_to_output_dir)}/timed_out.txt", "r") as f:
+            timed_out_tasks = [line.strip() for line in f.readlines()]
 
     __save_output_csvs(parsing_error_table, frontend_error_table, analysis_error_table, score_table)
-    __save_summary(test_case_counter, score_table, parsing_error_counter, frontend_error_counter, analysis_error_counter)
+    __save_summary(test_case_counter, score_table, parsing_error_counter, frontend_error_counter, analysis_error_counter, timed_out_tasks)
 
 
 def __add_row(temp, dataframe, test_case):
@@ -276,6 +282,7 @@ def __save_summary(
     parsing_error_counter: int,
     frontend_error_counter: int,
     analysis_error_counter: int,
+    timed_out_tasks: List[str],
 ):
 
     sv_comp_total_passed = (score_table["SV-COMP score"] > 0).sum()
@@ -330,6 +337,7 @@ def __save_summary(
         f"Parsing: [bold red]{parsing_error_counter}[/bold red]",
         f"Frontend: [bold red]{frontend_error_counter}[/bold red]",
         f"Analysis: [bold red]{analysis_error_counter}[/bold red]",
+        f"Timeouts: [bold red]{len(timed_out_tasks)}[/bold red]",
     ]
 
     for line in summary_lines:
