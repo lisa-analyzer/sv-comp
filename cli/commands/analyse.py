@@ -42,7 +42,11 @@ def analyse(
         outdir: Annotated[Optional[Path], typer.Option(
             "--outdir", "-o",
             help="Path to the output directory"
-        )] = None
+        )] = None,
+        timeout: Annotated[Optional[int], typer.Option(
+            "--timeout", "-t",
+            help="Timeout for each analysis in seconds"
+        )] = DEFAULT_TIMEOUT
 ):
     """
         Sends collected tasks to the LiSA instance for analysis
@@ -68,10 +72,10 @@ def analyse(
     if os.path.exists(workdir):
         shutil.rmtree(workdir, ignore_errors=True)
 
-    __perform_analysis(tasks)
+    __perform_analysis(tasks, timeout)
 
 
-def __perform_analysis(tasks: list[TaskDefinition]):
+def __perform_analysis(tasks: list[TaskDefinition], timeout: int):
     total = len(tasks)
     count = 1
     start_time = time.time()
@@ -84,15 +88,16 @@ def __perform_analysis(tasks: list[TaskDefinition]):
                    f" it.unive.jlisa.Main"
                    f" -s {task.input_file}"
                    f" -o {str(config.path_to_output_dir)}/results/{str(task.file_name)}"
-                   f" -n ConstantPropagation" #TODO This will become dynamic/a parameter at some point
+                   f" -n ConstantPropagation"
                    f" -m Statistics "
-                   f" -c Assert" #TODO
+                   f" -c Assert"
+                   f" --no-html"
                    )
 
         rich.print(f"Running command {count}/{total}: [bold blue]{command}[/bold blue]")
         proc = subprocess.Popen(command, shell=True, preexec_fn=os.setsid)
         try:
-            proc.wait(timeout=DEFAULT_TIMEOUT)
+            proc.wait(timeout=timeout)
             if proc.returncode != 0:
                 raise subprocess.CalledProcessError(proc.returncode, command)
             rich.print("[green]Command executed.[/green]")

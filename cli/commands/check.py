@@ -26,8 +26,6 @@ config = Config.get()
 # Constants
 PROPERTY_ASSERT_TEXT = "CHECK( init(Main.main()), LTL(G assert) )\n"
 PROPERTY_RUNTIME_TEXT = "CHECK(init(Main.main()), LTL(G ! uncaught(java.lang.RuntimeException)))\n"
-DEFAULT_TIMEOUT = 60 # seconds
-
 
 @cli.command()
 def check(
@@ -112,7 +110,7 @@ def __run_analysis(inputs: str) -> LisaReport | None:
         text=True
     )
     try:
-        proc.wait(timeout=DEFAULT_TIMEOUT)
+        proc.wait()
         if proc.returncode == 0:
             report_path = config.path_to_output_dir / "report.json"
             with open(report_path, encoding="utf-8") as f:
