@@ -19,3 +19,4 @@ wheels/
 # Vendored dependencies
 /vendor/bin
 /vendor/lib
+scp
