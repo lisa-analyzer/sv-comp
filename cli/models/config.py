@@ -1,6 +1,7 @@
 # Standard library imports
 import json
 import dataclasses
+import os
 from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass
@@ -42,15 +43,20 @@ class Config:
         if not config_file.exists():
             rich.print(f"[bold yellow]Missing configuration file.[/bold yellow]")
             return cls()
-
+        
         config_dict = json.loads(config_file.read_text())
+        bench_dir = config_dict.get('path_to_sv_comp_benchmark_dir')
+        lisa_inst = config_dict.get('path_to_lisa_instance')
+        lisa_inst_clean = lisa_inst[1:-1] if lisa_inst and lisa_inst.endswith('"') else lisa_inst
+        lisa_inst_clean = lisa_inst_clean[:-1] if lisa_inst_clean and lisa_inst_clean.endswith('*') else lisa_inst_clean
+        if not os.path.exists(lisa_inst_clean):
+            lisa_inst = str(script_dir) + "/" + config_dict.get('path_to_lisa_instance')
+        out_dir = config_dict.get('path_to_output_dir')
+        
         return cls(
-            path_to_sv_comp_benchmark_dir=Path(config_dict.get('path_to_sv_comp_benchmark_dir')) if config_dict.get(
-                'path_to_sv_comp_benchmark_dir') else None,
-            path_to_lisa_instance=Path(str(Path(__file__).resolve().parents[2]) + "/" + config_dict.get('path_to_lisa_instance')) if config_dict.get(
-                'path_to_lisa_instance') else None,
-            path_to_output_dir=Path(config_dict.get('path_to_output_dir')) if config_dict.get(
-                'path_to_output_dir') else None
+            path_to_sv_comp_benchmark_dir=Path(bench_dir) if bench_dir else None,
+            path_to_lisa_instance=Path(lisa_inst) if lisa_inst else None,
+            path_to_output_dir=Path(out_dir) if out_dir else None
         )
 
     def is_empty(self) -> bool:
