@@ -18,6 +18,7 @@ import typer
 from cli.models.config import Config
 from cli.models.property import Property
 from cli.models.lisa_report.lisa_report import LisaReport
+from cli.commands.analyse import get_lisa_cmd
 
 # CLI setup
 cli = typer.Typer()
@@ -92,15 +93,19 @@ def __validate_input_paths(inputs: str) -> list[Path]:
     return paths
 
 def __run_analysis(inputs: str) -> LisaReport | None:
-    command = (
-        f" {config.path_to_lisa_instance}"
-        f" -s {inputs}"
-        f" -o {config.path_to_output_dir}"
-        f" -n ConstantPropagation"
-        f" -m Statistics"
-        f" -c Assert"
-        f" --no-html"
-    )
+    command = get_lisa_cmd(config, inputs, None, 10)
+    (f"java"
+                f" -Xmx10G"
+                f" -cp {config.path_to_lisa_instance}"
+                f" it.unive.jlisa.Main"
+                f" -s {inputs}"
+                f" -o {config.path_to_output_dir}"
+                f" -n ConstantPropagation"
+                f" -m Statistics"
+                f" -c Assert"
+                f" --no-html"
+                f" --l ERROR"
+            )
 
     proc = subprocess.Popen(
         command,
@@ -109,6 +114,7 @@ def __run_analysis(inputs: str) -> LisaReport | None:
         stderr=subprocess.PIPE,
         text=True
     )
+    
     try:
         proc.wait()
         if proc.returncode == 0:
@@ -121,12 +127,6 @@ def __run_analysis(inputs: str) -> LisaReport | None:
                 error_output = proc.stderr.read().strip()
                 rich.print(f"[red]Error: {error_output}[/red]")
         return None
-
-    except subprocess.TimeoutExpired:
-        rich.print("[bold red]ANALYSIS TIMED OUT[/bold red]")
-        proc.kill()
-        return None
-
     except Exception as e:
         rich.print(f"[bold red]An unexpected error occurred:[/bold red] {e}")
         print(f"Error details: {e}", file=sys.stderr)

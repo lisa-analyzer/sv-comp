@@ -23,6 +23,17 @@ cli = typer.Typer(
     )
 )
 
+@cli.callback(invoke_without_command=True)
+def main(
+    version: bool = typer.Option(
+        False, "--version", "-v", help="Show the CLI version and exit", is_eager=True
+    ),
+):
+    if version:
+        from cli.commands.version import version as vs
+        vs()
+        raise typer.Exit()
+
 from cli.commands.setup import cli as setup
 from cli.commands.harvest import cli as harvest
 from cli.commands.analyse import cli as analyse

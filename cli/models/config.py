@@ -16,7 +16,7 @@ import rich
 from rich.markup import escape
 
 # Project-local imports
-from cli.utils.util import json_serializer
+from cli.utils.util import json_serializer, resource_path
 
 # CLI setup
 cli = typer.Typer()
@@ -37,8 +37,7 @@ class Config:
             Loads configuration from a JSON file. Returns a new Config instance with the loaded settings
         """
 
-        script_dir = Path(__file__).resolve().parents[2]
-        config_file = script_dir / "config.json"
+        config_file = resource_path("config.json")
 
         if not config_file.exists():
             rich.print(f"[bold yellow]Missing configuration file.[/bold yellow]")
@@ -50,7 +49,7 @@ class Config:
         lisa_inst_clean = lisa_inst[1:-1] if lisa_inst and lisa_inst.endswith('"') else lisa_inst
         lisa_inst_clean = lisa_inst_clean[:-1] if lisa_inst_clean and lisa_inst_clean.endswith('*') else lisa_inst_clean
         if not os.path.exists(lisa_inst_clean):
-            lisa_inst = str(script_dir) + "/" + config_dict.get('path_to_lisa_instance')
+            lisa_inst = resource_path(config_dict.get('path_to_lisa_instance'))
         out_dir = config_dict.get('path_to_output_dir')
         
         return cls(

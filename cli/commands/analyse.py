@@ -111,18 +111,7 @@ def analyse(
                 f.write(f"{t}\n")
 
 def __perform_analysis(task: WorkerTask):
-    command = (f"java"
-                f" -Xmx{task.max_memory}G"
-                f" -cp {config.path_to_lisa_instance}"
-                f" it.unive.jlisa.Main"
-                f" -s {task.task.input_file}"
-                f" -o {str(config.path_to_output_dir)}/results/{str(task.task.file_name)}"
-                f" -n ConstantPropagation"
-                f" -m Statistics "
-                f" -c Assert"
-                f" --no-html"
-                f" --l ERROR"
-            )
+    command = get_lisa_cmd(config, task.task.input_file, f"results/{task.task.file_name}", task.max_memory)
 
     rich.print(f"Running command {task.task_idx}/{task.total_tasks}: [bold blue]{command}[/bold blue]")
     proc = subprocess.Popen(command, shell=True, preexec_fn=os.setsid)
@@ -148,3 +137,20 @@ def __perform_analysis(task: WorkerTask):
         elapsed_hms = time.strftime('%H:%M:%S', time.gmtime(elapsed))
         rich.print(f"[red]Command {task.task_idx} failed. Elapsed time: {elapsed_hms}[/red]")
 
+def get_lisa_cmd(config: Config, input_file: str, file_name: str, max_memory: int) -> str:
+    """
+        Get the command to run LiSA from the configuration file
+    """
+    out = str(config.path_to_output_dir) if not file_name else f"{str(config.path_to_output_dir)}/{file_name}"
+    return (f"java"
+            f" -Xmx{max_memory}G"
+            f" -cp {config.path_to_lisa_instance}"
+            f" it.unive.jlisa.Main"
+            f" -s {input_file}"
+            f" -o {out}"
+            f" -n ConstantPropagation"
+            f" -m Statistics"
+            f" -c Assert"
+            f" --no-html"
+            f" --l ERROR"
+            )
