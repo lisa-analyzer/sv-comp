@@ -17,5 +17,6 @@ INPUT_2=(
 PROPERTY="$SCRIPT_DIR/test/valid-assert.prp"
 
 # Run the command
+python3 "$MAIN_PY" --version
 python3 "$MAIN_PY" check --inputs "${INPUT_1[@]}" --property "$PROPERTY"
 python3 "$MAIN_PY" check --inputs "${INPUT_2[@]}" --property "$PROPERTY"
