@@ -66,7 +66,7 @@ class AssertClassification(Enum):
     ### FORMAT: (code, sv-comp verdict)
 
     # no warnings are issued
-    NO_WARNINGS = 1, "UNKNOWN" # maybe TRUE
+    NO_WARNINGS = 1, "TRUE" # was UNKNOWN
 
     # only "assertion definitely holds" warnings are issued
     ONLY_DEFINITE_HOLDS = 2, "TRUE"
@@ -75,7 +75,7 @@ class AssertClassification(Enum):
     ONLY_POSSIBLE_NOT_HOLDS = 3, "UNKNOWN"
     
     # only "assertion definitely does not hold" warnings are issued
-    ONLY_DEFINITE_NOT_HOLDS = 4, "UNKNOWN" # maybe FALSE
+    ONLY_DEFINITE_NOT_HOLDS = 4, "FALSE" # was UNKNOWN
     
     # both "assertion possibly does not hold" 
     # and "assertion definitely does not hold" warnings are issued,
@@ -85,7 +85,7 @@ class AssertClassification(Enum):
     # both "assertion definitely holds" 
     # and "assertion definitely does not hold" warnings are issued,
     # but no "assertion possibly does not hold" warning is issued
-    CONFLICTING_HOLDS_AND_NOT_HOLDS = 6, "UNKNOWN" # maybe FALSE
+    CONFLICTING_HOLDS_AND_NOT_HOLDS = 6, "FALSE" # was UNKNOWN
 
     # both "assertion definitely holds" 
     # and "assertion possibly does not hold" warnings are issued,
@@ -95,7 +95,7 @@ class AssertClassification(Enum):
     # "assertion definitely holds", 
     # "assertion definitely does not hold", 
     # and "assertion possibly does not hold" warnings are issued
-    ALL = 8, "UNKNOWN" # maybe FALSE
+    ALL = 8, "FALSE" # was UNKNOWN
     
     # unknown classification
     UNKNOWN = 9, "UNKNOWN"
