@@ -19,6 +19,7 @@ from cli.models.config import Config
 from cli.models.property import Property
 from cli.models.lisa_report.lisa_report import LisaReport
 from cli.commands.analyse import get_lisa_cmd
+from cli.utils.util import classify_asserts, AssertClassification, classify_runtime, RuntimeClassification
 
 # CLI setup
 cli = typer.Typer()
@@ -141,24 +142,21 @@ def __display_results(property: Property, lisa_report: LisaReport):
 
 
 def __display_assert_results(lisa_report: LisaReport):
-    if not lisa_report.has_assert_warnings():
-        rich.print("[bold green]NO ASSERT WARNING[/bold green]")
-    elif lisa_report.has_possible_assert_warning():
-        rich.print("[bold orange3]ASSERT[/bold orange3] [bold yellow]POSSIBLY HOLDS[/bold yellow]")
-    elif lisa_report.check_definite_holds_and_not_holds_assert_warnings():
-        rich.print("[bold orange3]ASSERT[/bold orange3] [bold green]HOLDS FOR SOME CASES[/bold green] BUT [bold red]NOT FOR OTHERS[/bold red]")
-    elif lisa_report.has_definite_holds_assert_warning():
-        rich.print("[bold orange3]ASSERT[/bold orange3] [bold green]DOES HOLD[/bold green]")
-    elif lisa_report.has_definite_not_holds_assert_warning():
-        rich.print("[bold orange3]ASSERT[/bold orange3] [bold red]DOES NOT HOLD[/bold red]")
+    match classify_asserts(lisa_report).value[1]:
+        case "TRUE":
+            rich.print("[bold green]TRUE[/bold green]")
+        case "FALSE":
+            rich.print("[bold red]FALSE[/bold red]")
+        case "UNKNOWN":
+            rich.print("[bold orange3]UNKNOWN[/bold orange3]")
 
 
 def __display_runtime_results(lisa_report: LisaReport):
-    if not lisa_report.has_runtime_warnings():
-        rich.print("[bold green]NO RUNTIME WARNING[/bold green]")
-    elif lisa_report.has_possible_runtime_warning():
-        rich.print("[bold orange3]RUNTIME[/bold orange3] [bold yellow]POSSIBLY HOLDS[/bold yellow]")
-    elif lisa_report.has_definite_holds_assert_warning():
-        rich.print("[bold orange3]RUNTIME[/bold orange3] [bold green]DOES HOLD[/bold green]")
-    elif lisa_report.has_definite_not_holds_assert_warning():
-        rich.print("[bold orange3]RUNTIME[/bold orange3] [bold red]DOES NOT HOLD[/bold red]")
+    match classify_runtime(lisa_report).value[1]:
+        case "TRUE":
+            rich.print("[bold green]TRUE[/bold green]")
+        case "FALSE":
+            rich.print("[bold red]FALSE[/bold red]")
+        case "UNKNOWN":
+            rich.print("[bold orange3]UNKNOWN[/bold orange3]")
+

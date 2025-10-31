@@ -12,6 +12,7 @@ from cli.models.config import Config
 from cli.commands.harvest import get_task
 from cli.models.lisa_report.lisa_report import LisaReport
 from cli.models.task_definition.task_definition import TaskDefinition
+from cli.utils.util import classify_asserts, AssertClassification, classify_runtime, RuntimeClassification
 
 # Third-party imports
 import rich
@@ -31,12 +32,15 @@ RUNTIME_TRUE = "Runtime exceptions set to TRUE"
 RUNTIME_FALSE = "Runtime exceptions set to FALSE"
 RUNTIME_ABSENT = "Runtime exceptions property is absent from .yml file. The score is left as zero."
 
-DEFINITE_WARNING = "LiSA produced a DEFINITE warning"
-DEFINITE_NOT_WARNING = "LiSA produced a DEFINITE NOT holds warning"
-POSSIBLE_WARNING = "LiSA produced a POSSIBLE warning"
-CONFLICT_WARNING = "LiSA produced both DEFINITE 'holds' and 'does not hold' warnings"
+DEFINITE_WARNING = "LiSA produced only DEFINITE HOLDS warnings"
+DEFINITE_NOT_WARNING = "LiSA produced only DEFINITE NOT holds warnings"
+POSSIBLE_NOT_WARNING = "LiSA produced only POSSIBLY NOT holds warnings"
+CONFLICT_NOT_WARNING = "LiSA produced both DEFINITE and POSSIBLE 'does not hold' warnings"
+CONFLICT_HOLDS_AND_NOT_WARNING = "LiSA produced both DEFINITE 'holds' and 'does not hold' warnings"
+CONFLICT_HOLDS_AND_POSSIBLY_NOT_WARNING = "LiSA produced both DEFINITE 'holds' and POSSIBLE 'does not hold' warnings"
+CONFLICT_ALL_WARNING = "LiSA produced both DEFINITE 'holds' and 'does not hold', and POSSIBLE 'does not hold' warnings"
+UNKNOWN_WARNING = "LiSA classification unknown"
 NO_WARNINGS = "LiSA produced no warnings"
-
 
 @cli.command()
 def statistics():
@@ -120,134 +124,116 @@ def __compute_score(results_dir: str, file_name: str) -> DataFrame:
     with open(os.path.join(results_dir, "report.json"), encoding="utf-8") as f:
         lisa_report = LisaReport(**json.load(f))
 
-    sv_runtime, lisa_runtime, due_runtime = __score_runtime_exceptions(task, lisa_report)
-    sv_assert, lisa_assert, due_assert = __score_assertions(task, lisa_report)
+    sv_runtime, due_runtime = __score_runtime_exceptions(task, lisa_report)
+    sv_assert, due_assert = __score_assertions(task, lisa_report)
 
     data = [
-        [file_name, "runtime", sv_runtime, lisa_runtime, "\n".join(due_runtime)],
-        [file_name, "assert", sv_assert, lisa_assert, "\n".join(due_assert)],
+        [file_name, "runtime", sv_runtime, "\n".join(due_runtime)],
+        [file_name, "assert", sv_assert, "\n".join(due_assert)],
     ]
 
     score_table = DataFrame(
         data,
-        columns=["Test case", "Type", "SV-COMP score", "LiSA internal score", "Due to"]
+        columns=["Test case", "Type", "SV-COMP score", "Due to"]
     )
 
     return score_table
 
 
-def __score_assertions(task: TaskDefinition, lisa_report: LisaReport) -> Tuple[int, int, List[str]]:
+def __score_assertions(task: TaskDefinition, lisa_report: LisaReport) -> Tuple[int, List[str]]:
     sv_comp_score = 0
-    lisa_internal_score = 0
     due_to: List[str] = []
 
     expected = task.are_assertions_expected()
+    classification = classify_asserts(lisa_report)
     if expected: # TRUE
-        if not lisa_report.has_assert_warnings():  # EMPTY
-            # Case 9
-            sv_comp_score += 2
-            lisa_internal_score += 2
-            due_to.append(f"{ASSERTIONS_TRUE}, and {NO_WARNINGS}")
-        elif lisa_report.has_possible_assert_warning():
-            # Case 1, 2, 3
-            sv_comp_score += 0
-            lisa_internal_score -= 16
-            due_to.append(f"{ASSERTIONS_TRUE}, and {POSSIBLE_WARNING}")
-        elif lisa_report.check_definite_holds_and_not_holds_assert_warnings():
-            # Case 4
-            sv_comp_score += 0
-            lisa_internal_score -= 16
-            due_to.append(f"{ASSERTIONS_TRUE}, and {CONFLICT_WARNING}")
-        elif lisa_report.has_definite_holds_assert_warning():
-            # Case 5, 6
-            sv_comp_score += 2
-            lisa_internal_score += 2
-            due_to.append(f"{ASSERTIONS_TRUE}, and {DEFINITE_WARNING}")
-        elif lisa_report.has_definite_not_holds_assert_warning():
-            # Case 7, 8
-            sv_comp_score -= 16
-            lisa_internal_score -= 16
-            due_to.append(f"{ASSERTIONS_TRUE}, and {DEFINITE_NOT_WARNING}")
+        expected_res = ASSERTIONS_TRUE
+        match classification.value[1]:
+            case "TRUE":
+                sv_comp_score += 2
+            case "FALSE":
+                sv_comp_score += -16
+            case "UNKNOWN":
+                sv_comp_score += 0
     elif expected is False:
-        if not lisa_report.has_assert_warnings():  # EMPTY
-            # Case 18
-            sv_comp_score -= 32
-            lisa_internal_score -= 32
-            due_to.append(f"{ASSERTIONS_FALSE}, and {NO_WARNINGS}")
-        elif lisa_report.has_possible_assert_warning():
-            # Case 10, 11, 12
-            sv_comp_score += 0
-            lisa_internal_score -= 32
-            due_to.append(f"{ASSERTIONS_FALSE}, and {POSSIBLE_WARNING}")
-        elif lisa_report.check_definite_holds_and_not_holds_assert_warnings():
-            # Case 13
-            sv_comp_score += 0
-            lisa_internal_score -= 32
-            due_to.append(f"{ASSERTIONS_FALSE}, and {CONFLICT_WARNING}")
-        elif lisa_report.has_definite_holds_assert_warning():
-            # Case 14, 15
-            sv_comp_score -= 32
-            lisa_internal_score -= 32
-            due_to.append(f"{ASSERTIONS_FALSE}, and {DEFINITE_WARNING}")
-        elif lisa_report.has_definite_not_holds_assert_warning():
-            # Case 16, 17
-            sv_comp_score += 1
-            lisa_internal_score += 1
-            due_to.append(f"{ASSERTIONS_FALSE}, and {DEFINITE_NOT_WARNING}")
+        expected_res = ASSERTIONS_FALSE
+        match classification.value[1]:
+            case "TRUE":
+                sv_comp_score += -32
+            case "FALSE":
+                sv_comp_score += 1
+            case "UNKNOWN":
+                sv_comp_score += 0
     else: # PROPERTY IS ABSENT
-        # Case 31
         sv_comp_score += 0
-        lisa_internal_score += 0
         due_to.append(f"{ASSERTION_ABSENT}")
+        return sv_comp_score, due_to
 
-    return sv_comp_score, lisa_internal_score, due_to
+    match classification.value[0]:
+        case AssertClassification.NO_WARNINGS:
+            due_to.append(f"{expected_res}, and {NO_WARNINGS}")
+        case AssertClassification.ONLY_DEFINITE_HOLDS:
+            due_to.append(f"{expected_res}, and {DEFINITE_WARNING}")
+        case AssertClassification.ONLY_POSSIBLE_NOT_HOLDS:
+            due_to.append(f"{expected_res}, and {POSSIBLE_NOT_WARNING}")
+        case AssertClassification.ONLY_DEFINITE_NOT_HOLDS:
+            due_to.append(f"{expected_res}, and {DEFINITE_NOT_WARNING}")
+        case AssertClassification.CONFLICTING_NOT_HOLDS:
+            due_to.append(f"{expected_res}, and {CONFLICT_NOT_WARNING}")
+        case AssertClassification.CONFLICTING_HOLDS_AND_NOT_HOLDS:
+            due_to.append(f"{expected_res}, and {CONFLICT_HOLDS_AND_NOT_WARNING}")
+        case AssertClassification.CONFLICTING_HOLDS_AND_POSSIBLY_NOT_HOLDS:
+            due_to.append(f"{expected_res}, and {CONFLICT_HOLDS_AND_POSSIBLY_NOT_WARNING}")
+        case AssertClassification.ALL:
+            due_to.append(f"{expected_res}, and {CONFLICT_ALL_WARNING}")
+        case AssertClassification.UNKNOWN:
+            due_to.append(f"{expected_res}, and {UNKNOWN_WARNING}")
+
+    return sv_comp_score, due_to
 
 
-def __score_runtime_exceptions(task: TaskDefinition, lisa_report: LisaReport) -> Tuple[int, int, List[str]]:
+def __score_runtime_exceptions(task: TaskDefinition, lisa_report: LisaReport) -> Tuple[int, List[str]]:
     sv_comp_score = 0
-    lisa_internal_score = 0
     due_to: List[str] = []
 
     expected = task.are_runtime_exceptions_expected()
+    classification = classify_runtime(lisa_report)
     if expected: # TRUE
-        if not lisa_report.has_runtime_warnings():  # EMPTY
-            # Case 24
-            sv_comp_score += 2
-            lisa_internal_score += 2
-            due_to.append(f"{RUNTIME_TRUE}, and {NO_WARNINGS}")
-        elif lisa_report.has_possible_runtime_warning():
-            # Case 19, 21, 22
-            sv_comp_score += 0
-            lisa_internal_score -= 16
-            due_to.append(f"{RUNTIME_TRUE}, and {POSSIBLE_WARNING}")
-        elif lisa_report.has_definite_runtime_warning():
-            # Case 20, 23
-            sv_comp_score -= 16
-            lisa_internal_score -= 16
-            due_to.append(f"{RUNTIME_TRUE}, and {DEFINITE_WARNING}")
+        expected_res = RUNTIME_TRUE
+        match classification.value[1]:
+            case "TRUE":
+                sv_comp_score += 2
+            case "FALSE":
+                sv_comp_score += -16
+            case "UNKNOWN":
+                sv_comp_score += 0
     elif expected is False:
-        if not lisa_report.has_runtime_warnings():  # EMPTY
-            # Case 30
-            sv_comp_score -= 32
-            lisa_internal_score -= 32
-            due_to.append(f"{RUNTIME_FALSE}, and {NO_WARNINGS}")
-        elif lisa_report.has_possible_runtime_warning():
-            # Case 25, 27, 28
-            sv_comp_score += 0
-            lisa_internal_score -= 32
-            due_to.append(f"{RUNTIME_FALSE}, and {POSSIBLE_WARNING}")
-        elif lisa_report.has_definite_runtime_warning():
-            # Case 26, 29
-            sv_comp_score += 1
-            lisa_internal_score += 1
-            due_to.append(f"{RUNTIME_FALSE}, and {DEFINITE_WARNING}")
+        expected_res = RUNTIME_FALSE
+        match classification.value[1]:
+            case "TRUE":
+                sv_comp_score += -32
+            case "FALSE":
+                sv_comp_score += 1
+            case "UNKNOWN":
+                sv_comp_score += 0
     else: # PROPERTY IS ABSENT
-        # Case 32
         sv_comp_score += 0
-        lisa_internal_score += 0
         due_to.append(f"{RUNTIME_ABSENT}")
+        return sv_comp_score, due_to
 
-    return sv_comp_score, lisa_internal_score, due_to
+    match classification.value[0]:
+        case RuntimeClassification.NO_WARNINGS:
+            due_to.append(f"{expected_res}, and {NO_WARNINGS}")
+        case RuntimeClassification.ONLY_POSSIBLE_NOT_HOLDS:
+            due_to.append(f"{expected_res}, and {POSSIBLE_NOT_WARNING}")
+        case RuntimeClassification.ONLY_DEFINITE_NOT_HOLDS:
+            due_to.append(f"{expected_res}, and {DEFINITE_NOT_WARNING}")
+        case RuntimeClassification.CONFLICTING_NOT_HOLDS:
+            due_to.append(f"{expected_res}, and {CONFLICT_NOT_WARNING}")
+        case RuntimeClassification.UNKNOWN:
+            due_to.append(f"{expected_res}, and {UNKNOWN_WARNING}")
+    
+    return sv_comp_score, due_to
 
 
 def __save_output_csvs(
@@ -297,18 +283,6 @@ def __save_summary(
     sv_comp_zero_assert = (score_table.loc[score_table["Type"] == "assert", "SV-COMP score"] == 0).sum()
     sv_comp_failed_assert = (score_table.loc[score_table["Type"] == "assert", "SV-COMP score"] < 0).sum()
 
-    lisa_total_passed = (score_table["LiSA internal score"] > 0).sum()
-    lisa_total_zero = (score_table["LiSA internal score"] == 0).sum()
-    lisa_total_failed = (score_table["LiSA internal score"] < 0).sum()
-
-    lisa_passed_runtime = (score_table.loc[score_table["Type"] == "runtime", "LiSA internal score"] > 0).sum()
-    lisa_zero_runtime = (score_table.loc[score_table["Type"] == "runtime", "LiSA internal score"] == 0).sum()
-    lisa_failed_runtime = (score_table.loc[score_table["Type"] == "runtime", "LiSA internal score"] < 0).sum()
-
-    lisa_passed_assert = (score_table.loc[score_table["Type"] == "assert", "LiSA internal score"] > 0).sum()
-    lisa_zero_assert = (score_table.loc[score_table["Type"] == "assert", "LiSA internal score"] == 0).sum()
-    lisa_failed_assert = (score_table.loc[score_table["Type"] == "assert", "LiSA internal score"] < 0).sum()
-
     summary_lines = [
         f"Total test cases: [bold blue]{test_case_counter}[/bold blue]",
         f"Effective test cases (per property): [bold blue]{test_case_counter * 2}[/bold blue]\n",
@@ -322,16 +296,6 @@ def __save_summary(
         f"Absolute: [bold green]{score_table['SV-COMP score'].sum()}[/bold green]",
         f"Runtime: [bold blue]{score_table.loc[score_table['Type'] == 'runtime', 'SV-COMP score'].sum()}[/bold blue]",
         f"Assert: [bold yellow]{score_table.loc[score_table['Type'] == 'assert', 'SV-COMP score'].sum()}[/bold yellow]\n",
-
-        "[bold]LiSA internal[/bold]\n",
-        f"[italic]Results[/italic]",
-        f"Overall: [bold green]{lisa_total_passed} passed[/bold green] / [bold yellow]{lisa_total_zero} inconclusive[/bold yellow] / [bold red]{lisa_total_failed} failed[/bold red]",
-        f"Runtime: [bold green]{lisa_passed_runtime} passed[/bold green] / [bold yellow]{lisa_zero_runtime} inconclusive[/bold yellow] / [bold red]{lisa_failed_runtime} failed[/bold red]",
-        f"Assert: [bold green]{lisa_passed_assert} passed[/bold green] / [bold yellow]{lisa_zero_assert} inconclusive[/bold yellow] / [bold red]{lisa_failed_assert} failed[/bold red]\n",
-        f"[italic]Scores[/italic]",
-        f"Absolute: [bold green]{score_table['LiSA internal score'].sum()}[/bold green]",
-        f"Runtime: [bold blue]{score_table.loc[score_table['Type'] == 'runtime', 'LiSA internal score'].sum()}[/bold blue]",
-        f"Assert: [bold yellow]{score_table.loc[score_table['Type'] == 'assert', 'LiSA internal score'].sum()}[/bold yellow]\n",
 
         f"[red bold]Errors[/red bold] (check corresponding .csv files)",
         f"Parsing: [bold red]{parsing_error_counter}[/bold red]",
@@ -347,3 +311,4 @@ def __save_summary(
     with open(summary_path, "w") as f:
         for line in summary_lines:
             f.write(Text.from_markup(line).plain + "\n")
+

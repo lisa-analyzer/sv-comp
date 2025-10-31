@@ -4,6 +4,9 @@ import tomllib
 import dataclasses
 import sys
 from pathlib import Path
+from enum import Enum
+
+from cli.models.lisa_report.lisa_report import LisaReport
 
 def json_serializer(obj):
     """
@@ -58,3 +61,89 @@ def get_meta_info(field: str):
         return data
     except (KeyError, TypeError):
         raise KeyError(f"Field '{field}' not found in {pyproject_path}")
+
+class AssertClassification(Enum):
+    ### FORMAT: (code, sv-comp verdict)
+
+    # no warnings are issued
+    NO_WARNINGS = 1, "UNKNOWN" # maybe TRUE
+
+    # only "assertion definitely holds" warnings are issued
+    ONLY_DEFINITE_HOLDS = 2, "TRUE"
+    
+    # only "assertion possibly does not hold" warnings are issued
+    ONLY_POSSIBLE_NOT_HOLDS = 3, "UNKNOWN"
+    
+    # only "assertion definitely does not hold" warnings are issued
+    ONLY_DEFINITE_NOT_HOLDS = 4, "UNKNOWN" # maybe FALSE
+    
+    # both "assertion possibly does not hold" 
+    # and "assertion definitely does not hold" warnings are issued,
+    # but no "assertion definitely holds" warning is issued
+    CONFLICTING_NOT_HOLDS = 5, "UNKNOWN"
+
+    # both "assertion definitely holds" 
+    # and "assertion definitely does not hold" warnings are issued,
+    # but no "assertion possibly does not hold" warning is issued
+    CONFLICTING_HOLDS_AND_NOT_HOLDS = 6, "UNKNOWN" # maybe FALSE
+
+    # both "assertion definitely holds" 
+    # and "assertion possibly does not hold" warnings are issued,
+    # but no "assertion definitely does not hold" warning is issued
+    CONFLICTING_HOLDS_AND_POSSIBLY_NOT_HOLDS = 7, "UNKNOWN"
+
+    # "assertion definitely holds", 
+    # "assertion definitely does not hold", 
+    # and "assertion possibly does not hold" warnings are issued
+    ALL = 8, "UNKNOWN" # maybe FALSE
+    
+    # unknown classification
+    UNKNOWN = 9, "UNKNOWN"
+
+def classify_asserts(lisa_report: LisaReport):
+    if not lisa_report.has_assert_warnings():
+        return AssertClassification.NO_WARNINGS
+    elif lisa_report.has_only_definite_holds_assert_warning():
+        return AssertClassification.ONLY_DEFINITE_HOLDS
+    elif lisa_report.has_only_possibly_not_holds_assert_warning():
+        return AssertClassification.ONLY_POSSIBLE_NOT_HOLDS
+    elif lisa_report.has_only_definite_not_holds_assert_warning():
+        return AssertClassification.ONLY_DEFINITE_NOT_HOLDS
+    elif lisa_report.has_possibly_not_holds_assert_warning() and lisa_report.has_definite_not_holds_assert_warning() and not lisa_report.has_definite_holds_assert_warning():
+        return AssertClassification.CONFLICTING_NOT_HOLDS
+    elif not lisa_report.has_possibly_not_holds_assert_warning() and lisa_report.has_definite_not_holds_assert_warning() and lisa_report.has_definite_holds_assert_warning():
+        return AssertClassification.CONFLICTING_HOLDS_AND_NOT_HOLDS
+    elif lisa_report.has_possibly_not_holds_assert_warning() and not lisa_report.has_definite_not_holds_assert_warning() and not lisa_report.has_definite_holds_assert_warning():
+        return AssertClassification.CONFLICTING_HOLDS_AND_POSSIBLY_NOT_HOLDS
+    elif lisa_report.has_possibly_not_holds_assert_warning() and lisa_report.has_definite_not_holds_assert_warning() and lisa_report.has_definite_holds_assert_warning():
+        return AssertClassification.ALL
+    return AssertClassification.UNKNOWN
+
+class RuntimeClassification(Enum):
+    ### FORMAT: (code, sv-comp verdict)
+    
+    # no warnings are issued
+    NO_WARNINGS = 1, "TRUE"
+    
+    # only "possible runtime exception" warnings are issued
+    ONLY_POSSIBLE_NOT_HOLDS = 2, "UNKNOWN"
+    
+    # only "definite runtime exception" warnings are issued
+    ONLY_DEFINITE_NOT_HOLDS = 3, "FALSE"
+
+    # both "possible runtime exception" and "definite runtime exception" warnings are issued
+    CONFLICTING_NOT_HOLDS = 4, "FALSE"
+    
+    # unknown classification
+    UNKNOWN = 5, "UNKNOWN"
+
+def classify_runtime(lisa_report: LisaReport):
+    if not lisa_report.has_runtime_warnings():
+        return RuntimeClassification.NO_WARNINGS
+    elif lisa_report.has_only_possibly_not_holds_runtime_warning():
+        return RuntimeClassification.ONLY_POSSIBLE_NOT_HOLDS
+    elif lisa_report.has_only_definite_not_holds_runtime_warning():
+        return RuntimeClassification.ONLY_DEFINITE_NOT_HOLDS
+    elif lisa_report.has_possibly_not_holds_runtime_warning() and lisa_report.has_definite_not_holds_runtime_warning():
+        return RuntimeClassification.CONFLICTING_NOT_HOLDS
+    return RuntimeClassification.UNKNOWN
