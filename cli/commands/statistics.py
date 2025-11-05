@@ -169,7 +169,7 @@ def __score_assertions(task: TaskDefinition, lisa_report: LisaReport) -> Tuple[i
         due_to.append(f"{ASSERTION_ABSENT}")
         return sv_comp_score, due_to
 
-    match classification.value[0]:
+    match classification:
         case AssertClassification.NO_WARNINGS:
             due_to.append(f"{expected_res}, and {NO_WARNINGS}")
         case AssertClassification.ONLY_DEFINITE_HOLDS:
@@ -221,7 +221,7 @@ def __score_runtime_exceptions(task: TaskDefinition, lisa_report: LisaReport) ->
         due_to.append(f"{RUNTIME_ABSENT}")
         return sv_comp_score, due_to
 
-    match classification.value[0]:
+    match classification:
         case RuntimeClassification.NO_WARNINGS:
             due_to.append(f"{expected_res}, and {NO_WARNINGS}")
         case RuntimeClassification.ONLY_POSSIBLE_NOT_HOLDS:
