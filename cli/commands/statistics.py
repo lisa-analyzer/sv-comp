@@ -112,12 +112,12 @@ def __to_svcomp_table_entry(file_name, virdict, score):
     task: TaskDefinition = get_task(file_name)
     svcomp_data = []
     if task.are_runtime_exceptions_expected() is not None:
-        svcomp_data.append([file_name, f"runtime|{task.are_runtime_exceptions_expected()}", virdict, score])
+        svcomp_data.append([f"{file_name}|runtime|{task.are_runtime_exceptions_expected()}", virdict, score])
     if task.are_assertions_expected() is not None:
-        svcomp_data.append([file_name, f"assert|{task.are_assertions_expected()}", virdict, score])
+        svcomp_data.append([f"{file_name}|assert|{task.are_assertions_expected()}", virdict, score])
     svcomp_iteration_df = DataFrame(
         svcomp_data,
-        columns=["Test case", "Type", "Virdict", "Score"]
+        columns=["Test case", "Virdict", "Score"]
     )
     return svcomp_iteration_df
 
@@ -149,10 +149,10 @@ def __compute_score(results_dir: str, file_name: str) -> DataFrame:
     svcomp_data = []
     if task.are_runtime_exceptions_expected() is not None:
         internal_data.append([file_name, "runtime", sv_runtime, "\n".join(due_runtime)])
-        svcomp_data.append([file_name, f"runtime|{task.are_runtime_exceptions_expected()}", virdict_runtime, sv_runtime])
+        svcomp_data.append([f"{file_name}|runtime|{task.are_runtime_exceptions_expected()}", virdict_runtime, sv_runtime])
     if task.are_assertions_expected() is not None:
         internal_data.append([file_name, "assert", sv_assert, "\n".join(due_assert)])
-        svcomp_data.append([file_name, f"assert|{task.are_assertions_expected()}", virdict_assert, sv_assert])
+        svcomp_data.append([f"{file_name}|assert|{task.are_assertions_expected()}", virdict_assert, sv_assert])
 
     score_table = DataFrame(
         internal_data,
@@ -160,7 +160,7 @@ def __compute_score(results_dir: str, file_name: str) -> DataFrame:
     )
     svcomp_table = DataFrame(
         svcomp_data,
-        columns=["Test case", "Type", "Virdict", "Score"]
+        columns=["Test case", "Virdict", "Score"]
     )
 
     return score_table, svcomp_table
