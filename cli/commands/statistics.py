@@ -96,7 +96,6 @@ def statistics():
             this_iteration_df, svcomp_iteration_df = __compute_score(results_dir, dir_name)
             score_table = score_table._append(this_iteration_df)
             svcomp_scores = svcomp_scores._append(svcomp_iteration_df)
-                
 
     timed_out_tasks = []
     if os.path.exists(f"{str(config.path_to_output_dir)}/timed_out.txt"):
@@ -145,7 +144,7 @@ def __compute_score(results_dir: str, file_name: str) -> DataFrame:
 
     sv_runtime, due_runtime, virdict_runtime = __score_runtime_exceptions(task, lisa_report)
     sv_assert, due_assert, virdict_assert = __score_assertions(task, lisa_report)
-    
+
     internal_data = []
     svcomp_data = []
     if task.are_runtime_exceptions_expected() is not None:
@@ -193,7 +192,7 @@ def __score_assertions(task: TaskDefinition, lisa_report: LisaReport) -> Tuple[i
             case "UNKNOWN":
                 sv_comp_score = 0
     else: # PROPERTY IS ABSENT
-        return 0, []
+        return 0, [], "UNKNOWN"
 
     match classification:
         case AssertClassification.NO_WARNINGS:
@@ -244,7 +243,7 @@ def __score_runtime_exceptions(task: TaskDefinition, lisa_report: LisaReport) ->
             case "UNKNOWN":
                 sv_comp_score = 0
     else: # PROPERTY IS ABSENT
-        return 0, []
+        return 0, [], "UNKNOWN"
 
     match classification:
         case RuntimeClassification.NO_WARNINGS:
@@ -257,7 +256,7 @@ def __score_runtime_exceptions(task: TaskDefinition, lisa_report: LisaReport) ->
             due_to.append(f"{expected_res}, and {CONFLICT_NOT_WARNING}")
         case RuntimeClassification.UNKNOWN:
             due_to.append(f"{expected_res}, and {UNKNOWN_WARNING}")
-    
+
     return sv_comp_score, due_to, virdict
 
 
@@ -279,7 +278,7 @@ def __save_output_csvs(
     __save_sorted_csv(parsing_error_table, "parsing.csv")
     __save_sorted_csv(frontend_error_table, "frontend.csv")
     __save_sorted_csv(analysis_error_table, "analysis.csv")
-    
+
     if svcomp_scores is not None:
         svcomp_scores = concat([svcomp_scores]).reset_index(drop=True)
         svcomp_scores.index += 1
@@ -322,10 +321,10 @@ def __save_summary(
     sv_comp_passed_assert = (score_table.loc[score_table["Type"] == "assert", "SV-COMP score"] > 0).sum()
     sv_comp_zero_assert = (score_table.loc[score_table["Type"] == "assert", "SV-COMP score"] == 0).sum()
     sv_comp_failed_assert = (score_table.loc[score_table["Type"] == "assert", "SV-COMP score"] < 0).sum()
-    
+
     runtime_score = score_table.loc[score_table['Type'] == 'runtime', 'SV-COMP score'].sum()
     assert_score = score_table.loc[score_table['Type'] == 'assert', 'SV-COMP score'].sum()
-    norm_score = ((runtime_score / runtime_tasks) + (assert_score / assert_tasks)) * ((runtime_tasks + assert_tasks) / 2)
+    norm_score = round(((runtime_score / runtime_tasks) + (assert_score / assert_tasks)) * ((runtime_tasks + assert_tasks) / 2))
 
     summary_lines = [
         f"Test files: [bold blue]{len(all_tasks)}[/bold blue]",
