@@ -73,21 +73,21 @@ def statistics():
 
             if file == "frontend.csv":
                 parsing_error_table = process_csv(file_path, parsing_error_table)
-                svcomp_iteration_df = __to_svcomp_table_entry(dir_name, "UNKNOWN", 0)
+                svcomp_iteration_df = __to_svcomp_table_entry(dir_name, "UNKNOWN (frontend)", 0)
                 svcomp_scores = svcomp_scores._append(svcomp_iteration_df)
                 parsing_error_counter += 1
                 treated = True
 
             elif file == "frontend-noparsing.csv":
                 frontend_error_table = process_csv(file_path, frontend_error_table)
-                svcomp_iteration_df = __to_svcomp_table_entry(dir_name, "UNKNOWN", 0)
+                svcomp_iteration_df = __to_svcomp_table_entry(dir_name, "UNKNOWN (no-parsing)", 0)
                 svcomp_scores = svcomp_scores._append(svcomp_iteration_df)
                 frontend_error_counter += 1
                 treated = True
 
             elif file == "analysis.csv":
                 analysis_error_table = process_csv(file_path, analysis_error_table)
-                svcomp_iteration_df = __to_svcomp_table_entry(dir_name, "UNKNOWN", 0)
+                svcomp_iteration_df = __to_svcomp_table_entry(dir_name, "UNKNOWN (analysis)", 0)
                 svcomp_scores = svcomp_scores._append(svcomp_iteration_df)
                 analysis_error_counter += 1
                 treated = True
@@ -137,7 +137,6 @@ def __add_row(temp, dataframe, test_case):
 
 
 def __compute_score(results_dir: str, file_name: str) -> DataFrame:
-
     task: TaskDefinition = get_task(file_name)
     with open(os.path.join(results_dir, "report.json"), encoding="utf-8") as f:
         lisa_report = LisaReport(**json.load(f))
