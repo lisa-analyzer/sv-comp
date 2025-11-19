@@ -20,3 +20,4 @@ wheels/
 /vendor/bin
 /vendor/lib
 scp
+comparison.csv
