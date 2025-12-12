@@ -9,7 +9,6 @@ This repository contains a command-line interface (CLI) app, written in Python v
 - [Installation and Setup](#installation-and-setup)
 - [Development](#development)
 - [Docker](#docker)
-- [Build SVCOMP 2026 Executable](#build-sv-comp-2026-executable)
 
 #### Overview
 
@@ -102,27 +101,4 @@ The Docker image can be run as follows
 > docker volume create analysis_results
 > docker build -t jlisa/svcomp .
 > docker run --mount type=volume,src=analysis_results,dst=/app/output jlisa/svcomp
-```
-
-#### Build SV-COMP 2026 Executable
-##### Requirements
-- Java 21 – Make sure the JAVA_HOME environment variable is set.
-- Python 3.12 or higher
-- zip and unzip utilities installed
-##### Building
-To build the SV-COMP executable, a shell script is provided.  
-1. First, clone the JLISA repository and checkout the svcomp-2026 tag:
-```bash
-> git clone https://github.com/lisa-analyzer/jlisa
-> cd jlisa
-> git checkout svcomp-2026
-```
-2. Run the build_jlisa.sh script, specifying the JLISA project folder using the --jlisa-dir parameter. For example:
-```bash
-> ./build_jlisa.sh --jlisa-dir ../jlisa/jlisa
-```
-This script will generate a jlisa.zip file. The zip contains the executable along with the license, README, and smoketest script.
-To use JLISA, unzip the jlisa.zip file and run the executable:
-```bash
-> ./jlisa check --inputs <input-file-1> <...> <input-file-N> --property <property-file.prp>
 ```
