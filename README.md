@@ -117,7 +117,13 @@ To build the SV-COMP executable, a shell script is provided.
 > cd jlisa
 > git checkout svcomp-2026
 ```
-2. Run the build_jlisa.sh script, specifying the JLISA project folder using the --jlisa-dir parameter. For example:
+2. Create a GitHub Personal Access Token (PAT) by following [this guide](https://docs.github.com/en/enterprise-cloud@latest/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) and grant it the read:packages permission.
+3. Inside the JLISA project folder, create a file named gradle.properties with the following content:
+```bash
+gpr.user=your-github-username
+gpr.key=github-access-token
+```
+4. Run the build_jlisa.sh script, specifying the JLISA project folder using the --jlisa-dir parameter. For example:
 ```bash
 > ./build_jlisa.sh --jlisa-dir ../jlisa/jlisa
 ```
