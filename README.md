@@ -130,5 +130,5 @@ gpr.key=github-access-token
 This script will generate a jlisa.zip file. The zip contains the executable along with the license, README, and smoketest script.
 To use JLISA, unzip the jlisa.zip file and run the executable:
 ```bash
-> ./jlisa check --inputs <input-file-1> <...> <input-file-N> --property <property-file.prp>
+> ./jlisa check --inputs "<input-file-1> <...> <input-file-N>" --property "<property-file.prp>"
 ```
