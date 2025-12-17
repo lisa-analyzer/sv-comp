@@ -60,7 +60,7 @@ if [ -d "$JLISA_DIR/build" ]; then
 fi
 
 echo "Building jlisa..."
-(cd "$JLISA_DIR" && ./gradlew clean build --refresh-dependencies)
+(cd "$JLISA_DIR" && ./gradlew clean build --refresh-dependencies -x test -x spotlessApply -x spotlessCheck --no-configuration-cache)
 
 if [ -d "$SV_COMP_DIR/$JLISA_BIN_DIR" ]; then
     echo "Removing existing $SV_COMP_DIR/$JLISA_BIN_DIR folder..."
