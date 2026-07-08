@@ -198,5 +198,6 @@ def get_lisa_cmd(
         f" -c Assert"
         f" --no-html"
         f" --l ERROR"
+        f" -d"
         f" -e"
     )

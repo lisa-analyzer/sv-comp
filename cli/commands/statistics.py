@@ -71,6 +71,11 @@ def statistics():
     frontend_error_counter = 0
     analysis_error_counter = 0
 
+    timed_out_tasks = []
+    if os.path.exists(f"{str(config.path_to_output_dir)}/timed_out.txt"):
+        with open(f"{str(config.path_to_output_dir)}/timed_out.txt", "r") as f:
+            timed_out_tasks = [line.strip() for line in f.readlines()]
+            
     def process_csv(file_path, dataframe):
         temp = (
             pandas.read_csv(file_path, sep=";")[["Message", "Type"]]
@@ -116,14 +121,10 @@ def statistics():
                 analysis_error_counter += 1
                 treated = True
 
-        if not treated:
+        if not treated and dir_name not in timed_out_tasks:
             svcomp_iteration_df = __compute_score(results_dir, dir_name)
             svcomp_scores = svcomp_scores._append(svcomp_iteration_df)
 
-    timed_out_tasks = []
-    if os.path.exists(f"{str(config.path_to_output_dir)}/timed_out.txt"):
-        with open(f"{str(config.path_to_output_dir)}/timed_out.txt", "r") as f:
-            timed_out_tasks = [line.strip() for line in f.readlines()]
     for t in timed_out_tasks:
         svcomp_iteration_df = __to_svcomp_table_entry(t, "TIMEOUT", 0)
         svcomp_scores = svcomp_scores._append(svcomp_iteration_df)
@@ -377,20 +378,23 @@ def __save_summary(
     total_zero = (scores["Score"] == 0).sum()
     total_failed = (scores["Score"] < 0).sum()
 
-    passed_runtime = (scores.loc["|runtime|" in scores["Test case"], "Score"] > 0).sum()
-    zero_runtime = (scores.loc["|runtime|" in scores["Test case"], "Score"] == 0).sum()
-    failed_runtime = (scores.loc["|runtime|" in scores["Test case"], "Score"] < 0).sum()
+    passed_runtime = (scores.loc[scores["Test case"].str.contains(r"\|runtime\|", na=False), "Score"] > 0).sum()
+    zero_runtime = (scores.loc[scores["Test case"].str.contains(r"\|runtime\|", na=False), "Score"] == 0).sum()
+    failed_runtime = (scores.loc[scores["Test case"].str.contains(r"\|runtime\|", na=False), "Score"] < 0).sum()
 
-    passed_assert = (scores.loc["|assert|" in scores["Test case"], "Score"] > 0).sum()
-    zero_assert = (scores.loc["|assert|" in scores["Test case"], "Score"] == 0).sum()
-    failed_assert = (scores.loc["|assert|" in scores["Test case"], "Score"] < 0).sum()
+    passed_assert = (scores.loc[scores["Test case"].str.contains(r"\|assert\|", na=False), "Score"] > 0).sum()
+    zero_assert = (scores.loc[scores["Test case"].str.contains(r"\|assert\|", na=False), "Score"] == 0).sum()
+    failed_assert = (scores.loc[scores["Test case"].str.contains(r"\|assert\|", na=False), "Score"] < 0).sum()
 
-    runtime_score = scores.loc["|runtime|" in scores["Test case"], "Score"].sum()
-    assert_score = scores.loc["|runtime|" in scores["Test case"], "Score"].sum()
+    runtime_score = scores.loc[scores["Test case"].str.contains(r"\|runtime\|", na=False), "Score"].sum()
+    assert_score = scores.loc[scores["Test case"].str.contains(r"\|assert\|", na=False), "Score"].sum()
     norm_score = round(
         ((runtime_score / runtime_tasks) + (assert_score / assert_tasks))
         * ((runtime_tasks + assert_tasks) / 2)
     )
+
+    count_bot = int(scores["Num Bottom"].sum())
+    count_open = int(scores["Num Open Calls"].sum())
 
     summary_lines = [
         f"Test files: [bold blue]{len(all_tasks)}[/bold blue]",
@@ -411,6 +415,8 @@ def __save_summary(
         f"Frontend: [bold red]{frontend_error_counter}[/bold red]",
         f"Analysis: [bold red]{analysis_error_counter}[/bold red]",
         f"Timeouts: [bold red]{len(timed_out_tasks)}[/bold red]",
+        f"Number of suspicious bottom states computed: [bold red]{count_bot}[/bold red]",
+        f"Number of open calls produced: [bold red]{count_open}[/bold red]",
     ]
 
     for line in summary_lines:

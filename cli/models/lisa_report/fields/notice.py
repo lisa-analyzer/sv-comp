@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class Warning:
+class Notice:
     """
     Represents a 'notice' field of a LiSA's 'report' JSON file
     """
