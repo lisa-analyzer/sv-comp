@@ -65,8 +65,8 @@ def statistics():
     analysis_error_table = None
     score_table = DataFrame()
     svcomp_scores = DataFrame()
-    all_bottoms = {}
-    all_opens = {}
+    all_bottoms = []
+    all_opens = []
 
     parsing_error_counter = 0
     frontend_error_counter = 0
@@ -124,10 +124,10 @@ def statistics():
 
         if not treated and dir_name not in timed_out_tasks:
             svcomp_iteration_df, bottoms, opens = __compute_score(results_dir, dir_name)
-            if bottoms:
-                all_bottoms[dir_name] = bottoms
-            if opens:
-                all_opens[dir_name] = opens
+            for notice in bottoms:
+                all_bottoms.append((dir_name, notice.message))
+            for notice in opens:
+                all_opens.append((dir_name, notice.message))
             svcomp_scores = svcomp_scores._append(svcomp_iteration_df)
 
     for t in timed_out_tasks:
@@ -377,6 +377,7 @@ def __save_output_csvs(
             "Notice",
         ],
     )
+    bottoms_table.to_csv(os.path.join(config.path_to_output_dir, "bottoms.csv"))
     opens_table = DataFrame(
         open_locations,
         columns=[
@@ -384,8 +385,7 @@ def __save_output_csvs(
             "Notice",
         ],
     )
-    __save_sorted_csv(bottoms_table, "bottoms.csv")
-    __save_sorted_csv(opens_table, "opens.csv")
+    opens_table.to_csv(os.path.join(config.path_to_output_dir, "opens.csv"))
 
 
 def __save_summary(
