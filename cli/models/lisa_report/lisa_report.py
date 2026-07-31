@@ -1,6 +1,5 @@
 # Standard library imports
 from dataclasses import dataclass
-from typing import List
 
 # Project-local imports
 from cli.models.lisa_report.fields.info import Info
@@ -15,8 +14,8 @@ class LisaReport:
     """
 
     # There are other fields (files, configuration, etc.) in the report. Add them up upon the need
-    warnings: List[Warning]
-    notices: List[Notice]
+    warnings: list[Warning]
+    notices: list[Notice]
     info: Info
 
     def __init__(self, warnings, notices, info, **_):
@@ -30,15 +29,15 @@ class LisaReport:
     def has_notices(self) -> bool:
         return self.info.notices > 0
 
-    def list_warnings(self) -> List[str]:
+    def list_warnings(self) -> list[str]:
         return [w.extract_warning() for w in self.warnings]
 
-    def list_notices(self) -> List[str]:
+    def list_notices(self) -> list[str]:
         return [n.extract_notice() for n in self.notices]
 
     # assert specific
 
-    def list_assert_warnings(self) -> List[str]:
+    def list_assert_warnings(self) -> list[str]:
         return [w.extract_warning() for w in self.warnings if w.is_assertion_warning()]
 
     def has_assert_warnings(self) -> bool:
@@ -74,7 +73,7 @@ class LisaReport:
 
     # runtime specific
 
-    def list_runtime_warnings(self) -> List[str]:
+    def list_runtime_warnings(self) -> list[str]:
         return [w.extract_warning() for w in self.warnings if w.is_runtime_warning()]
 
     def has_runtime_warnings(self) -> bool:
@@ -94,11 +93,17 @@ class LisaReport:
 
     # notice specific
 
+    def get_bottom_notices(self) -> int:
+        return [n for n in self.notices if n.is_bottom_notice()]
+
     def count_bottom_notices(self) -> int:
         return sum(1 for n in self.notices if n.is_bottom_notice())
 
     def has_bottom_notices(self) -> bool:
         return self.count_bottom_notices() > 0
+
+    def get_open_call_notices(self) -> int:
+        return [n for n in self.notices if n.is_open_call_notice()]
 
     def count_open_call_notices(self) -> int:
         return sum(1 for n in self.notices if n.is_open_call_notice())

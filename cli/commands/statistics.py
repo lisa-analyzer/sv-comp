@@ -1,7 +1,6 @@
 # Standard library imports
 import json
 import os
-from typing import List, Tuple
 
 # Load vendored packages
 from vendor.package_loader import load_packages
@@ -66,16 +65,18 @@ def statistics():
     analysis_error_table = None
     score_table = DataFrame()
     svcomp_scores = DataFrame()
+    all_bottoms = {}
+    all_opens = {}
 
     parsing_error_counter = 0
     frontend_error_counter = 0
     analysis_error_counter = 0
 
     timed_out_tasks = []
-    if os.path.exists(f"{str(config.path_to_output_dir)}/timed_out.txt"):
-        with open(f"{str(config.path_to_output_dir)}/timed_out.txt", "r") as f:
-            timed_out_tasks = [line.strip() for line in f.readlines()]
-            
+    if os.path.exists(f"{config.path_to_output_dir!s}/timed_out.txt"):
+        with open(f"{config.path_to_output_dir!s}/timed_out.txt", "r") as f:
+            timed_out_tasks = [line.strip() for line in f]
+
     def process_csv(file_path, dataframe):
         temp = (
             pandas.read_csv(file_path, sep=";")[["Message", "Type"]]
@@ -122,7 +123,11 @@ def statistics():
                 treated = True
 
         if not treated and dir_name not in timed_out_tasks:
-            svcomp_iteration_df = __compute_score(results_dir, dir_name)
+            svcomp_iteration_df, bottoms, opens = __compute_score(results_dir, dir_name)
+            if bottoms:
+                all_bottoms[dir_name] = bottoms
+            if opens:
+                all_opens[dir_name] = opens
             svcomp_scores = svcomp_scores._append(svcomp_iteration_df)
 
     for t in timed_out_tasks:
@@ -134,6 +139,8 @@ def statistics():
         frontend_error_table,
         analysis_error_table,
         svcomp_scores,
+        all_bottoms,
+        all_opens,
     )
     __save_summary(
         svcomp_scores,
@@ -230,14 +237,18 @@ def __compute_score(results_dir: str, file_name: str) -> DataFrame:
         ],
     )
 
-    return svcomp_table
+    return (
+        svcomp_table,
+        lisa_report.get_bottom_notices(),
+        lisa_report.get_open_call_notices(),
+    )
 
 
 def __score_assertions(
     task: TaskDefinition, lisa_report: LisaReport
-) -> Tuple[int, List[str]]:
+) -> tuple[int, list[str]]:
     sv_comp_score = 0
-    due_to: List[str] = []
+    due_to: list[str] = []
 
     expected = task.are_assertions_expected()
     classification = classify_asserts(lisa_report)
@@ -290,9 +301,9 @@ def __score_assertions(
 
 def __score_runtime_exceptions(
     task: TaskDefinition, lisa_report: LisaReport
-) -> Tuple[int, List[str]]:
+) -> tuple[int, list[str]]:
     sv_comp_score = 0
-    due_to: List[str] = []
+    due_to: list[str] = []
 
     expected = task.are_runtime_exceptions_expected()
     classification = classify_runtime(lisa_report)
@@ -338,6 +349,8 @@ def __save_output_csvs(
     frontend_error_table=None,
     analysis_error_table=None,
     svcomp_scores=None,
+    bottom_locations=None,
+    open_locations=None,
 ):
     def __save_sorted_csv(df, filename):
         if df is not None:
@@ -357,13 +370,30 @@ def __save_output_csvs(
         svcomp_scores.set_index("No.", inplace=True)
         svcomp_scores.to_csv(os.path.join(config.path_to_output_dir, "svcomp.csv"))
 
+    bottoms_table = DataFrame(
+        bottom_locations,
+        columns=[
+            "Test case",
+            "Notice",
+        ],
+    )
+    opens_table = DataFrame(
+        open_locations,
+        columns=[
+            "Test case",
+            "Notice",
+        ],
+    )
+    __save_sorted_csv(bottoms_table, "bottoms.csv")
+    __save_sorted_csv(opens_table, "opens.csv")
+
 
 def __save_summary(
     scores,
     parsing_error_counter: int,
     frontend_error_counter: int,
     analysis_error_counter: int,
-    timed_out_tasks: List[str],
+    timed_out_tasks: list[str],
 ):
     all_tasks = get_tasks()
     assert_tasks = 0
@@ -378,16 +408,38 @@ def __save_summary(
     total_zero = (scores["Score"] == 0).sum()
     total_failed = (scores["Score"] < 0).sum()
 
-    passed_runtime = (scores.loc[scores["Test case"].str.contains(r"\|runtime\|", na=False), "Score"] > 0).sum()
-    zero_runtime = (scores.loc[scores["Test case"].str.contains(r"\|runtime\|", na=False), "Score"] == 0).sum()
-    failed_runtime = (scores.loc[scores["Test case"].str.contains(r"\|runtime\|", na=False), "Score"] < 0).sum()
+    passed_runtime = (
+        scores.loc[scores["Test case"].str.contains(r"\|runtime\|", na=False), "Score"]
+        > 0
+    ).sum()
+    zero_runtime = (
+        scores.loc[scores["Test case"].str.contains(r"\|runtime\|", na=False), "Score"]
+        == 0
+    ).sum()
+    failed_runtime = (
+        scores.loc[scores["Test case"].str.contains(r"\|runtime\|", na=False), "Score"]
+        < 0
+    ).sum()
 
-    passed_assert = (scores.loc[scores["Test case"].str.contains(r"\|assert\|", na=False), "Score"] > 0).sum()
-    zero_assert = (scores.loc[scores["Test case"].str.contains(r"\|assert\|", na=False), "Score"] == 0).sum()
-    failed_assert = (scores.loc[scores["Test case"].str.contains(r"\|assert\|", na=False), "Score"] < 0).sum()
+    passed_assert = (
+        scores.loc[scores["Test case"].str.contains(r"\|assert\|", na=False), "Score"]
+        > 0
+    ).sum()
+    zero_assert = (
+        scores.loc[scores["Test case"].str.contains(r"\|assert\|", na=False), "Score"]
+        == 0
+    ).sum()
+    failed_assert = (
+        scores.loc[scores["Test case"].str.contains(r"\|assert\|", na=False), "Score"]
+        < 0
+    ).sum()
 
-    runtime_score = scores.loc[scores["Test case"].str.contains(r"\|runtime\|", na=False), "Score"].sum()
-    assert_score = scores.loc[scores["Test case"].str.contains(r"\|assert\|", na=False), "Score"].sum()
+    runtime_score = scores.loc[
+        scores["Test case"].str.contains(r"\|runtime\|", na=False), "Score"
+    ].sum()
+    assert_score = scores.loc[
+        scores["Test case"].str.contains(r"\|assert\|", na=False), "Score"
+    ].sum()
     norm_score = round(
         ((runtime_score / runtime_tasks) + (assert_score / assert_tasks))
         * ((runtime_tasks + assert_tasks) / 2)
