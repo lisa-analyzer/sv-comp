@@ -219,7 +219,7 @@ def __compute_score(results_dir: str, file_name: str) -> DataFrame:
                 f"{file_name}|assert|{task.are_assertions_expected()}",
                 virdict_assert,
                 sv_assert,
-                "\n".join(due_runtime),
+                "\n".join(due_assert),
                 lisa_report.count_bottom_notices(),
                 lisa_report.count_open_call_notices(),
             ]
