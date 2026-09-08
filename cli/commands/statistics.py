@@ -17,7 +17,7 @@ from pandas import DataFrame, concat
 from rich.text import Text
 
 from cli.commands.harvest import get_task, get_tasks
-from cli.models.config import Config
+from cli.models.config.config import Config
 from cli.models.lisa_report.lisa_report import LisaReport
 from cli.models.task_definition.task_definition import TaskDefinition
 from cli.utils.util import (
@@ -58,6 +58,8 @@ def statistics():
     """
     Computes statistics on analysis results
     """
+    config.validate()
+
     output_dir = os.path.join(str(config.path_to_output_dir), "results")
 
     parsing_error_table = None

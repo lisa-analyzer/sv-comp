@@ -14,10 +14,11 @@ import rich
 import typer
 
 # Project-local imports
-from cli.models.config import Config
+from cli.models.config.config import Config
 from cli.utils.util import json_serializer
 from cli.models.task_definition.fields.property import Property
 from cli.models.task_definition.task_definition import TaskDefinition
+from cli.models.config.fields.analysis_language import AnalysisLanguage
 
 # CLI setup
 cli = typer.Typer()
@@ -30,10 +31,7 @@ def harvest():
         Harvests task definitions (.yml files) and saves them in tasks.json
     """
 
-    if config.is_empty():
-        typer.echo("Configuration is empty. Run [bold]setup[/bold] first!")
-        raise typer.Exit()
-
+    config.validate()
     rich.print("[yellow]Harvesting task definitions from SV-COMP benchmark directory...[/yellow]")
 
     definitions = fetch_tasks()
@@ -81,7 +79,7 @@ def __harvest_tasks(benchmark_dir_path_from_cli: Optional[Path] = None) -> list[
     if benchmark_dir_path_from_cli:
         config.path_to_sv_comp_benchmark_dir = benchmark_dir_path_from_cli
 
-    for root, dirs, files in os.walk(config.path_to_sv_comp_benchmark_dir / "java"):
+    for root, dirs, files in os.walk(config.path_to_sv_comp_benchmark_dir / AnalysisLanguage(config.analysis_language)):
         for file in files:
             if file.endswith(".yml"):
                 paths_to_definition_files.append(os.path.join(root, file))
@@ -109,7 +107,7 @@ def __construct_task_definition(paths_to_definition_files: list[str]) -> list[Ta
         for file in __filter_out_subdirs(task_data["input_files"]):
             input_file = (
                 config.path_to_sv_comp_benchmark_dir
-                / "java"
+                / AnalysisLanguage(config.analysis_language)
                 / path.parent
                 / file
             )

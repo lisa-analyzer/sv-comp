@@ -15,11 +15,11 @@ import rich
 import typer
 
 # Project-local imports
-from cli.models.config import Config
+from cli.models.config.config import Config
 from cli.models.property import Property
 from cli.models.lisa_report.lisa_report import LisaReport
 from cli.commands.analyse import get_lisa_cmd
-from cli.utils.util import classify_asserts, AssertClassification, classify_runtime, RuntimeClassification
+from cli.utils.util import classify_asserts, classify_runtime
 
 # CLI setup
 cli = typer.Typer()
@@ -45,6 +45,8 @@ def check(
     """
     Check input files against a specified property
     """
+
+    config.validate()
 
     __clean_output_directory()
     __validate_input_paths(inputs)
@@ -95,18 +97,6 @@ def __validate_input_paths(inputs: str) -> list[Path]:
 
 def __run_analysis(inputs: str) -> LisaReport | None:
     command = get_lisa_cmd(config, inputs, None, 10)
-    (f"java"
-                f" -Xmx10G"
-                f" -cp {config.path_to_lisa_instance}"
-                f" it.unive.jlisa.Main"
-                f" -s {inputs}"
-                f" -o {config.path_to_output_dir}"
-                f" -n ConstantPropagation"
-                f" -m Statistics"
-                f" -c Assert"
-                f" --no-html"
-                f" --l ERROR"
-            )
 
     proc = subprocess.Popen(
         command,

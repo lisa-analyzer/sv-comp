@@ -1,12 +1,14 @@
 # Standard library imports
 from pathlib import Path
+from random import choices
 
 # Standard library imports
 from vendor.package_loader import load_packages
 load_packages()
 
 # Project-local imports
-from cli.models.config import Config
+from cli.models.config.config import Config
+from cli.models.config.fields.analysis_language import AnalysisLanguage
 
 # Third-party imports
 import rich
@@ -35,6 +37,12 @@ def setup():
 
         if override_config != "y":
             raise typer.Exit()
+
+    analysis_language = Prompt.ask(
+        "[bold]Choose analysis [magenta]language[/magenta] from the options[/bold]",
+        choices=[lang.value for lang in AnalysisLanguage]
+    )
+    config.analysis_language = AnalysisLanguage(analysis_language)
 
     path_to_sv_comp_dir_str = Prompt.ask("[bold]Enter path to [green]SV-COMP[/green] benchmark directory[/bold]")
     config.path_to_sv_comp_benchmark_dir = __validate_path(path_to_sv_comp_dir_str)

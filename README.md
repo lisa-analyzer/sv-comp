@@ -52,14 +52,28 @@ There are two ways to carry out the analysis. First, the iterative (start by `py
 
  Sends collected tasks to the LiSA instance for analysis
  
-╭─ Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --benchdir  -b      PATH  Path to the SV-COMP benchmark directory                                                                    │
-│ --lisadir   -l      PATH  Path to the LiSA instance                                                                                  │
-│ --outdir    -o      PATH  Path to the output directory                                                                               │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --language     -a      [java|python]  Analysis language [default: None]      │
+│ --benchdir     -b      PATH           Path to the SV-COMP benchmark          │
+│                                       directory                              │
+│                                       [default: None]                        │
+│ --lisadir      -l      PATH           Path to the LiSA instance              │
+│                                       [default: None]                        │
+│ --outdir       -o      PATH           Path to the output directory           │
+│                                       [default: None]                        │
+│ --timeout      -t      INTEGER        Timeout for each analysis in seconds   │
+│                                       [default: 300]                         │
+│ --max-memory   -m      INTEGER        Maximum memory for each analysis in GB │
+│                                       [default: 10]                          │
+│ --parallelism  -p      INTEGER        Number of parallel analyses to run     │
+│                                       [default: 1]                           │
+│ --help                                Show this message and exit.            │
+╰────────────────────────────────────────────────────────────────────────────────╯
  
- > python main.py analyse -b [...] --lisadir [...] --outdir [...]
+ > python main.py analyse -a java -b [...] --lisadir [...] --outdir [...]
 ```
+
+`--language`, `--benchdir`, `--lisadir`, and `--outdir` are all-or-nothing: either supply all four for a one-line run, or omit all four and rely on a saved config (see [Installation and Setup](#installation-and-setup)).
 
 #### Installation and Setup
 

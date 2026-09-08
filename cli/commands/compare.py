@@ -5,7 +5,7 @@ from vendor.package_loader import load_packages
 load_packages()
 
 # Project-local imports
-from cli.models.config import Config
+from cli.models.config.config import Config
 
 # Third-party imports
 import rich

@@ -7,7 +7,9 @@ from vendor.package_loader import load_packages
 load_packages()
 
 # Project-local imports
-from cli.models.config import Config
+from cli.models.config.config import Config
+from cli.models.config.fields.analysis_language import AnalysisLanguage
+from cli.utils.util import get_lisa_frontend_main_class
 
 # Third-party imports
 import rich
@@ -29,7 +31,9 @@ def version():
                    "Run [bold]setup[/bold] first and make sure that LiSA instance is specified!")
         raise typer.Exit()
 
-    command = f"java -cp {config.path_to_lisa_instance} it.unive.jlisa.Main -v"
+    main_class = get_lisa_frontend_main_class(config)
+
+    command = f"java -cp {config.path_to_lisa_instance} {main_class} -v"
 
     try:
         result = subprocess.run(command, shell=True, check=True, capture_output=True, text=True)

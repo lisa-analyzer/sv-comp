@@ -9,6 +9,9 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Lock
 
+from cli.models.config.fields.analysis_language import AnalysisLanguage
+from cli.utils.util import get_lisa_frontend_main_class
+
 # Load vendored packages
 from vendor.package_loader import load_packages
 
@@ -21,10 +24,9 @@ import rich
 import typer
 from typing_extensions import Optional
 
-from cli.commands.harvest import fetch_tasks, get_tasks
-
 # Project-local imports
-from cli.models.config import Config
+from cli.commands.harvest import fetch_tasks, get_tasks
+from cli.models.config.config import Config
 from cli.models.task_definition.task_definition import TaskDefinition
 
 # CLI setup
@@ -56,6 +58,10 @@ class WorkerTask:
 
 @cli.command()
 def analyse(
+    language: Annotated[
+        Optional[AnalysisLanguage],
+        typer.Option("--language", "-a", help="Analysis language"),
+    ] = None,
     benchdir: Annotated[
         Optional[Path],
         typer.Option(
@@ -92,21 +98,23 @@ def analyse(
     """
     Sends collected tasks to the LiSA instance for analysis
     """
-    some_args_provided = any([benchdir, lisadir, outdir])
-    all_args_provided = all([benchdir, lisadir, outdir])
+    some_args_provided = any([language, benchdir, lisadir, outdir])
+    all_args_provided = all([language, benchdir, lisadir, outdir])
 
     if some_args_provided and not all_args_provided:
         raise typer.BadParameter(
-            "If any of --benchdir, --lisadir, or --outdir is used, all three must be provided."
+            "If any of --language, --benchdir, --lisadir, or --outdir is used, all four must be provided."
         )
 
     tasks: list[TaskDefinition]
     if all_args_provided:
+        config.analysis_language = language
         config.path_to_sv_comp_benchmark_dir = benchdir
         config.path_to_lisa_instance = lisadir
         config.path_to_output_dir = outdir
         tasks = fetch_tasks(benchdir)
     else:
+        config.validate()
         tasks = get_tasks()
 
     workdir = f"{str(config.path_to_output_dir)}/results"
@@ -181,6 +189,8 @@ def get_lisa_cmd(
     """
     Get the command to run LiSA from the configuration file
     """
+    main_class = get_lisa_frontend_main_class(config)
+
     out = (
         str(config.path_to_output_dir)
         if not file_name
@@ -189,8 +199,8 @@ def get_lisa_cmd(
     return (
         f"java"
         f" -Xmx{max_memory}G"
-        f" -cp {config.path_to_lisa_instance}"
-        f" it.unive.jlisa.Main"
+        f' -cp "{config.path_to_lisa_instance}"'
+        f" {main_class}"
         f" -s {input_file}"
         f" -o {out}"
         f" -n ConstantPropagation"

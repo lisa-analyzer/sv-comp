@@ -1,12 +1,19 @@
 # Standard library imports
+from __future__ import annotations
 import json
 import tomllib
 import dataclasses
 import sys
 from pathlib import Path
 from enum import Enum
+from typing import TYPE_CHECKING
 
+# Project-local imports
+from cli.models.config.fields.analysis_language import AnalysisLanguage
 from cli.models.lisa_report.lisa_report import LisaReport
+
+if TYPE_CHECKING:
+    from cli.models.config.config import Config
 
 def json_serializer(obj):
     """
@@ -147,3 +154,11 @@ def classify_runtime(lisa_report: LisaReport):
     elif lisa_report.has_possibly_not_holds_runtime_warning() and lisa_report.has_definite_not_holds_runtime_warning():
         return RuntimeClassification.CONFLICTING_NOT_HOLDS
     return RuntimeClassification.UNKNOWN
+
+def get_lisa_frontend_main_class(config: Config) -> str:
+    main_classes = {
+        AnalysisLanguage.JAVA: "it.unive.jlisa.Main",
+        AnalysisLanguage.PYTHON: "it.unive.pylisa.StubbedMainForSVCOMP"
+    }
+
+    return main_classes[AnalysisLanguage(config.analysis_language)]

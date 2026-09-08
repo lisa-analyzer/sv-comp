@@ -1,5 +1,6 @@
 {
+    "analysis_language": "java",
     "path_to_sv_comp_benchmark_dir": "/app/svcomp-benchmark",
-    "path_to_lisa_instance": "\"jlisa/jlisa-0.1/lib/*\"",
+    "path_to_lisa_instance": "jlisa/jlisa-0.1/lib/*",
     "path_to_output_dir": "./output"
 }
