@@ -1,4 +1,5 @@
 # Standard library imports
+import os
 
 # Load vendored packages
 from vendor.package_loader import load_packages
@@ -30,8 +31,8 @@ def compare(
         )] = None,
         output: Annotated[Optional[str], typer.Option(
             "--output", "-o",
-            help="Path to the output file for the comparison results",
-        )] = 'comparison.csv'
+            help="Path to the output file for the comparison results. If provided, the comparison is saved there; otherwise it is only printed to the console.",
+        )] = None
 ):
     """
         Compares two SV-COMP results tables (produced by command 'statistics') to find differences
@@ -40,10 +41,15 @@ def compare(
         raise typer.BadParameter(
             "Both --first and --second must be provided."
         )
-    
+
+    if output is not None and os.path.isdir(output):
+        raise typer.BadParameter(
+            f"--output must be a path to a file, not a directory: {output}"
+        )
+
     __compare_csv_files(first, second, output)
 
-def __compare_csv_files(file1: str, file2: str, output: str = "comparison.csv"):
+def __compare_csv_files(file1: str, file2: str, output: str | None):
     """Compare two CSV files and create a comparison dataframe."""
     
     # Read both files
@@ -139,11 +145,7 @@ def __compare_csv_files(file1: str, file2: str, output: str = "comparison.csv"):
     
     # Sort by test case
     comparison_df = comparison_df.sort_values('Test case').reset_index(drop=True)
-    
-    # Save to CSV
-    comparison_df.to_csv(output, index=False)
-    
-    rich.print(f"Comparison saved to {output}")
+
     rich.print(f"[bold]Summary:[/bold]")
     rich.print(f"  First file ({file1}):")
     rich.print(f"    Total test cases: {first_testcases}")
@@ -184,6 +186,9 @@ def __compare_csv_files(file1: str, file2: str, output: str = "comparison.csv"):
     rich.print(f"    Negative changes: [red]{negative_changes} (-{total_score_decrease})[/red]")
     rich.print(f"  New test cases: {comparison_df['Virdict'].str.contains('new').sum()}")
     rich.print(f"  Deleted test cases: {comparison_df['Virdict'].str.contains('deleted').sum()}")
-    
-    return comparison_df
+
+    # Save to CSV
+    if output is not None:
+        rich.print(f"\n Comparison saved to {output}")
+        comparison_df.to_csv(output, index=False)
     

@@ -6,6 +6,7 @@ This repository contains a command-line interface (CLI) app, written in Python v
 
 - [Overview](#overview)
 - [Quick Analysis Example](#quick-analysis-example)
+- [Comparing Results](#comparing-results)
 - [Installation and Setup](#installation-and-setup)
 - [Development](#development)
 - [Docker](#docker)
@@ -34,6 +35,7 @@ Usage: main.py [OPTIONS] COMMAND [ARGS]...
 │ analyse      Sends collected tasks to the LiSA instance for analysis                                                                                                                           │
 │ check        Check input files against a specified property                                                                                                                                    │
 │ statistics   Computes statistics on analysis results                                                                                                                                           │
+│ compare      Compares two SV-COMP results tables to find differences                                                                                                                           │
 │ version      Shows a version of the LiSA's instance in use                                                                                                                                     │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
@@ -59,6 +61,47 @@ There are two ways to carry out the analysis. First, the iterative (start by `py
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
  
  > python main.py analyse -b [...] --lisadir [...] --outdir [...]
+```
+
+### Comparing Results
+
+The CLI tool comes along with the `compare` command. It allows to diff two results tables produced by `statistics` command.
+More precisely it uses `svcomp.csv` file that `statistics` command produce among others. 
+
+For the example let's consider that there are two output folders of two separate analysis results, each containing its own `svcomp.csv`:
+
+```terminaloutput
+ ../svh/output-old/svcomp.csv
+ ../svh/output-new/svcomp.csv
+```
+
+The user have a choice to just print out in the console the diff:
+```shell
+  python main.py compare -f ../svh/output-old/svcomp.csv -s ../svh/output-new/svcomp.csv
+```
+
+Or, additionally, by providing the `-o` argument, it is possible to save the comparison to a specified file, e.g:
+
+```shell
+  python main.py compare -f ../svh/output-old/svcomp.csv -s ../svh/output-new/svcomp.csv -o ../svh/output/comparison.csv
+```
+
+```terminaloutput
+> python main.py compare --help
+
+ Usage: main.py compare [OPTIONS]
+
+ Compares two SV-COMP results tables (produced by command 'statistics') to find differences
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --first   -f      TEXT  Path to the first SV-COMP results table (produced by │
+│                         command 'statistics')                                │
+│ --second  -s      TEXT  Path to the second SV-COMP results table (produced   │
+│                         by command 'statistics')                             │
+│ --output  -o      TEXT  Path to the output file for the comparison results.  │
+│                         If provided, the comparison is saved there;          │
+│                         otherwise it is only printed to the console.         │
+╰────────────────────────────────────────────────────────────────────────────╯
 ```
 
 #### Installation and Setup
