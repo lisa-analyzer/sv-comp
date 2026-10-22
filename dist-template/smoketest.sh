@@ -31,14 +31,14 @@ expect() {
 check() {
   local property="$1" expected="$2"
   shift 2
-  expect "check $property $*" "$($JLISA check --inputs "$*" --property "$TEST/$property" | tail -n 1)" "$expected"
+  expect "check $property $*" "$($JLISA check --property "$TEST/$property" "$@" | tail -n 1)" "$expected"
 }
 
 # validate WITNESS PROPERTY PROGRAM EXPECTED
 validate() {
   local witness="$1" property="$2" program="$3" expected="$4"
   expect "validate $witness $property $program" \
-    "$($JLISA validate --witness "$TEST/$witness" --property "$TEST/$property" --inputs "$TEST/common/ $TEST/$program/" | tail -n 1)" \
+    "$($JLISA validate --witness "$TEST/$witness" --property "$TEST/$property" "$TEST/common/" "$TEST/$program/" | tail -n 1)" \
     "$expected"
 }
 

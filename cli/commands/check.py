@@ -32,11 +32,9 @@ PROPERTY_RUNTIME_TEXT = "CHECK(init(Main.main()), LTL(G ! uncaught(java.lang.Run
 
 @cli.command()
 def check(
-        inputs: str = typer.Option(
+        inputs: list[str] = typer.Argument(
             ...,
-            "-i",
-            "--inputs",
-            help="In double quotes provide input files separated by empty space",
+            help="The input files and directories of the task",
         ),
         property: str = typer.Option(
             ...,
@@ -99,8 +97,8 @@ def __resolve_property(property: str) -> Property:
         return Property(property.lower())
 
 
-def __validate_input_paths(inputs: str) -> list[Path]:
-    paths = [Path(p) for p in inputs.split(" ")]
+def __validate_input_paths(inputs: list[str]) -> list[Path]:
+    paths = [Path(p) for p in inputs]
 
     for path in paths:
         if not path.exists():
@@ -110,24 +108,11 @@ def __validate_input_paths(inputs: str) -> list[Path]:
 
     return paths
 
-def __run_analysis(inputs: str) -> LisaReport | None:
+def __run_analysis(inputs: list[str]) -> LisaReport | None:
     command = get_lisa_cmd(config, inputs, None, 10)
-    (f"java"
-                f" -Xmx10G"
-                f" -cp {config.path_to_lisa_instance}"
-                f" it.unive.jlisa.Main"
-                f" -s {inputs}"
-                f" -o {config.path_to_output_dir}"
-                f" -n ConstantPropagation"
-                f" -m Statistics"
-                f" -c Assert"
-                f" --no-html"
-                f" --l ERROR"
-            )
 
     proc = subprocess.Popen(
         command,
-        shell=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True
@@ -151,7 +136,7 @@ def __run_analysis(inputs: str) -> LisaReport | None:
         return None
 
 
-def __display_results(property: Property, lisa_report: LisaReport, inputs: str, property_file: str):
+def __display_results(property: Property, lisa_report: LisaReport, inputs: list[str], property_file: str):
     if property == Property.ASSERT:
         verdict = classify_asserts(lisa_report).value[1]
     elif property == Property.RUNTIME:
@@ -174,13 +159,13 @@ def __print_verdict(verdict: str):
             rich.print("[bold orange3]UNKNOWN[/bold orange3]")
 
 
-def __find_bug(inputs: str, property_file: str) -> str:
+def __find_bug(inputs: list[str], property_file: str) -> str:
     """
     when jlisa returns unknown, look for inputs that violate the property, with the bug-finding mode of
     jlisa-wit (it runs the program and only reports a violation that a run really reaches).
     Returns FALSE if it finds one, otherwise UNKNOWN. It never returns TRUE.
     """
-    paths = inputs.split(" ")
+    paths = inputs
     if (not config.has_jlisa_wit() or not Path(property_file).is_file()
             or not all(Path(p).is_dir() for p in paths)):
         return "UNKNOWN"

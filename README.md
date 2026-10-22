@@ -186,13 +186,13 @@ Unzip the jlisa.zip file. `./jlisa components` lists the tools included in the a
 
 To verify a program:
 ```bash
-> ./jlisa check --inputs "<input-1> <...> <input-N>" --property "<property-file.prp>"
+> ./jlisa check --property "<property-file.prp>" <input-1> <...> <input-N>
 ```
 The last line of the output is the verdict: TRUE (the property holds), FALSE (the property is violated) or UNKNOWN. The results of the analysis, and the violation witness, are written to the folder `outputs/` in the working directory (the witness is `outputs/witness/witness.graphml`).
 
 To validate a violation witness:
 ```bash
-> ./jlisa validate --witness "<witness-file>" --inputs "<input-dir-1> <...> <input-dir-N>" --property "<property-file.prp>"
+> ./jlisa validate --witness "<witness-file>" --property "<property-file.prp>" <input-dir-1> <...> <input-dir-N>
 ```
 As for SV-COMP validators, the verdict is about the property, and the last line of the output is one of:
 - FALSE: the violation of the witness is reproduced, and the witness is confirmed (the line before it is `Witness Correct`)

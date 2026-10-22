@@ -11,6 +11,6 @@ class Info:
     warnings: int
     notices: int
 
-    def __init__(self, warnings, notices, **_):
+    def __init__(self, warnings, notices=0, **_):
         self.warnings = int(warnings)
         self.notices = int(notices)

@@ -39,11 +39,9 @@ def validate(
             "-p",
             "--property",
             help="Provide path to the property file"),
-        inputs: str = typer.Option(
+        inputs: list[str] = typer.Argument(
             ...,
-            "-i",
-            "--inputs",
-            help="In double quotes provide input directories separated by empty space")):
+            help="The input directories of the task")):
     """
     Validate a violation witness against the input files and a specified property
     """
@@ -66,8 +64,7 @@ def validate(
         print(f"unsupported property: {property}", file=sys.stderr)
         raise typer.Exit(code=1)
 
-    paths = [p for p in inputs.split(" ") if p]
-    output = run_jlisa_wit(config, paths, property_name, ["--witness", os.path.abspath(witness)])
+    output = run_jlisa_wit(config, inputs, property_name, ["--witness", os.path.abspath(witness)])
 
     verdicts = [line.strip() for line in output.splitlines() if line.strip() in VERDICTS]
     verdict = verdicts[-1] if verdicts else "Could not validate"

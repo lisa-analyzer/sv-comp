@@ -136,14 +136,16 @@ def analyse(
 
 
 def __perform_analysis(task: WorkerTask):
+    # the input files of a harvested task are saved as one string, separated by spaces
     command = get_lisa_cmd(
-        config, task.task.input_file, f"results/{task.task.file_name}", task.max_memory
+        config, str(task.task.input_file).split(), f"results/{task.task.file_name}", task.max_memory,
+        debug=True
     )
 
     rich.print(
-        f"Running command {task.task_idx}/{task.total_tasks}: [bold blue]{command}[/bold blue]"
+        f"Running command {task.task_idx}/{task.total_tasks}: [bold blue]{' '.join(command)}[/bold blue]"
     )
-    proc = subprocess.Popen(command, shell=True, preexec_fn=os.setsid)
+    proc = subprocess.Popen(command, preexec_fn=os.setsid)
     try:
         proc.wait(timeout=task.timeout)
         if proc.returncode != 0:
@@ -176,28 +178,34 @@ def __perform_analysis(task: WorkerTask):
 
 
 def get_lisa_cmd(
-    config: Config, input_file: str, file_name: str, max_memory: int
-) -> str:
+    config: Config, input_files: list[str], file_name: str, max_memory: int, debug: bool = False
+) -> list[str]:
     """
-    Get the command to run LiSA from the configuration file
+    Get the command to run LiSA from the configuration file, as a list of arguments. With debug, jlisa
+    also writes the debug information (open calls, bottom states) and the exceptions that the statistics use.
+
+    The command is:
+        java -Xmx<max_memory>G -cp <path_to_lisa_instance> it.unive.jlisa.Main
+            -s <input-1> <...> <input-N> -o <output-dir>
+            -n ConstantPropagation -m Statistics -c Assert --no-html --l ERROR [-d -e]
     """
     out = (
         str(config.path_to_output_dir)
         if not file_name
         else f"{str(config.path_to_output_dir)}/{file_name}"
     )
-    return (
-        f"java"
-        f" -Xmx{max_memory}G"
-        f" -cp {config.path_to_lisa_instance}"
-        f" it.unive.jlisa.Main"
-        f" -s {input_file}"
-        f" -o {out}"
-        f" -n ConstantPropagation"
-        f" -m Statistics"
-        f" -c Assert"
-        f" --no-html"
-        f" --l ERROR"
-        f" -d"
-        f" -e"
-    )
+    # the classpath is saved with the quotes of a shell command line, and no shell runs the command
+    classpath = str(config.path_to_lisa_instance).replace('"', '')
+    return [
+        "java",
+        f"-Xmx{max_memory}G",
+        "-cp", classpath,
+        "it.unive.jlisa.Main",
+        "-s", *input_files,
+        "-o", out,
+        "-n", "ConstantPropagation",
+        "-m", "Statistics",
+        "-c", "Assert",
+        "--no-html",
+        "--l", "ERROR",
+    ] + (["-d", "-e"] if debug else [])

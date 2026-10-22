@@ -18,7 +18,7 @@ class LisaReport:
     notices: list[Notice]
     info: Info
 
-    def __init__(self, warnings, notices, info, **_):
+    def __init__(self, warnings, info, notices=(), **_):
         self.warnings = [Warning(**w) if isinstance(w, dict) else w for w in warnings]
         self.notices = [Notice(**n) if isinstance(n, dict) else n for n in notices]
         self.info = Info(**info)
