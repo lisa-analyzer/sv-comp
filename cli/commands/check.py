@@ -20,6 +20,7 @@ from cli.models.property import Property
 from cli.models.lisa_report.lisa_report import LisaReport
 from cli.commands.analyse import get_lisa_cmd
 from cli.utils.util import classify_asserts, AssertClassification, classify_runtime, RuntimeClassification
+from cli.utils.jlisa_wit import parse_property, run_jlisa_wit
 
 # CLI setup
 cli = typer.Typer()
@@ -46,6 +47,12 @@ def check(
     Check input files against a specified property
     """
 
+    if not config.has_jlisa():
+        print("jlisa analysis not included in this build", file=sys.stderr)
+        print("UNKNOWN")
+        raise typer.Exit(code=1)
+
+    __use_writable_output_directory()
     __clean_output_directory()
     __validate_input_paths(inputs)
     property_to_check = __resolve_property(property)
@@ -53,7 +60,17 @@ def check(
     lisa_report = __run_analysis(inputs)
 
     if lisa_report:
-        __display_results(property_to_check, lisa_report)
+        __display_results(property_to_check, lisa_report, inputs, property)
+
+
+def __use_writable_output_directory():
+    """
+    jlisa writes its results, and the witness, to outputs/ in the working directory, where BenchExec
+    collects the result files. The output directory of config.json is a path of the machine where the
+    archive was built, outside the working directory of a BenchExec run.
+    """
+    config.path_to_output_dir = Path.cwd() / "outputs"
+    config.path_to_output_dir.mkdir(parents=True, exist_ok=True)
 
 
 def __clean_output_directory():
@@ -134,15 +151,21 @@ def __run_analysis(inputs: str) -> LisaReport | None:
         return None
 
 
-def __display_results(property: Property, lisa_report: LisaReport):
+def __display_results(property: Property, lisa_report: LisaReport, inputs: str, property_file: str):
     if property == Property.ASSERT:
-        __display_assert_results(lisa_report)
+        verdict = classify_asserts(lisa_report).value[1]
     elif property == Property.RUNTIME:
-        __display_runtime_results(lisa_report)
+        verdict = classify_runtime(lisa_report).value[1]
+    else:
+        return
+    # bug finding fallback mode only if jlisa returns unknown and the flag is active (experimental).
+    if verdict == "UNKNOWN" and config.enable_find_bug_fallback:
+        verdict = __find_bug(inputs, property_file)
+    __print_verdict(verdict)
 
 
-def __display_assert_results(lisa_report: LisaReport):
-    match classify_asserts(lisa_report).value[1]:
+def __print_verdict(verdict: str):
+    match verdict:
         case "TRUE":
             rich.print("[bold green]TRUE[/bold green]")
         case "FALSE":
@@ -151,12 +174,26 @@ def __display_assert_results(lisa_report: LisaReport):
             rich.print("[bold orange3]UNKNOWN[/bold orange3]")
 
 
-def __display_runtime_results(lisa_report: LisaReport):
-    match classify_runtime(lisa_report).value[1]:
-        case "TRUE":
-            rich.print("[bold green]TRUE[/bold green]")
-        case "FALSE":
-            rich.print("[bold red]FALSE[/bold red]")
-        case "UNKNOWN":
-            rich.print("[bold orange3]UNKNOWN[/bold orange3]")
-
+def __find_bug(inputs: str, property_file: str) -> str:
+    """
+    when jlisa returns unknown, look for inputs that violate the property, with the bug-finding mode of
+    jlisa-wit (it runs the program and only reports a violation that a run really reaches).
+    Returns FALSE if it finds one, otherwise UNKNOWN. It never returns TRUE.
+    """
+    paths = inputs.split(" ")
+    if (not config.has_jlisa_wit() or not Path(property_file).is_file()
+            or not all(Path(p).is_dir() for p in paths)):
+        return "UNKNOWN"
+    property_name = parse_property(property_file)
+    if property_name is None:
+        return "UNKNOWN"
+    time_limit = config.find_bug_time_limit
+    try:
+        output = run_jlisa_wit(config, paths, property_name, ["--find-bug", "--time-limit", str(time_limit)],
+                               timeout=float(time_limit) + 60)
+    except (subprocess.TimeoutExpired, OSError) as e:
+        print(f"jlisa: UNKNOWN; bug finding failed: {e}", file=sys.stderr)
+        return "UNKNOWN"
+    found = "Violation found" in [line.strip() for line in output.splitlines()]
+    print(f"jlisa: UNKNOWN; bug finding: {'violation found' if found else 'nothing found'}", file=sys.stderr)
+    return "FALSE" if found else "UNKNOWN"

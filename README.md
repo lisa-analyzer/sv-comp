@@ -10,7 +10,8 @@ This repository contains a command-line interface (CLI) app, written in Python v
 - [Installation and Setup](#installation-and-setup)
 - [Development](#development)
 - [Docker](#docker)
-- [Build SVCOMP 2026 Executable](#build-sv-comp-2026-executable)
+- [Build SV-COMP Executable](#build-sv-comp-executable)
+- [Running the Executable](#running-the-executable)
 
 #### Overview
 
@@ -24,20 +25,23 @@ Usage: main.py [OPTIONS] COMMAND [ARGS]...
 
  This CLI tool is intended to help you work with SV-COMP benchmark suites.
 
-╭─ Options ──────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                │
-╰────────────────────────────────────────────────────────────────────────────╯
-╭─ Commands ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ setup        A prompt.                                                                                                                                                                         │
-│              Points and records (to the local config file) to essential directories for the tool                                                                                               │
-│              (e.g., location of LiSA instance, SV COMP benchmark source files, where to output results)                                                                                        │
-│ harvest      Harvests task definitions (.yml files) and saves them in tasks.json                                                                                                               │
-│ analyse      Sends collected tasks to the LiSA instance for analysis                                                                                                                           │
-│ check        Check input files against a specified property                                                                                                                                    │
-│ statistics   Computes statistics on analysis results                                                                                                                                           │
-│ compare      Compares two SV-COMP results tables to find differences                                                                                                                           │
-│ version      Shows a version of the LiSA's instance in use                                                                                                                                     │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --version  -v        Show the CLI version and exit                                                                   │
+│ --help               Show this message and exit.                                                                     │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ setup        A prompt.                                                                                               │
+│              Points and records (to the local config file) to essential directories for the tool                     │
+│              (e.g., location of LiSA instance, SV COMP benchmark source files, where to output results)              │
+│ harvest      Harvests task definitions (.yml files) and saves them in tasks.json                                     │
+│ analyse      Sends collected tasks to the LiSA instance for analysis                                                 │
+│ check        Check input files against a specified property                                                          │
+│ validate     Validate a violation witness against the input files and a specified property                           │
+│ components   Lists the tools included in this build: jlisa (check) and/or jlisa-wit (validate)            │
+│ statistics   Computes statistics on analysis results                                                                 │
+│ compare      Compares two SV-COMP results tables (produced by command 'statistics') to find differences              │
+│ version      Shows a version of the LiSA's instance in use                                                           │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
  Developed and maintained by the Software and System Verification (SSV) group
  @ Università Ca' Foscari Venezia, Italy
@@ -147,31 +151,50 @@ The Docker image can be run as follows
 > docker run --mount type=volume,src=analysis_results,dst=/app/output jlisa/svcomp
 ```
 
-#### Build SV-COMP 2026 Executable
+#### Build SV-COMP Executable
 ##### Requirements
-- Java 21 – Make sure the JAVA_HOME environment variable is set.
+- Java 21 or higher – Make sure the JAVA_HOME environment variable is set.
 - Python 3.12 or higher
 - zip and unzip utilities installed
 ##### Building
-To build the SV-COMP executable, a shell script is provided.  
-1. First, clone the JLISA repository and checkout the svcomp-2026 tag:
+To build the SV-COMP executable, a shell script is provided. The archive can include JLiSA (the verifier, run by `jlisa check`), JLiSA-Wit (the violation witness validator, run by `jlisa validate`), or both.
+1. Clone the repositories of the tools to include, and check out the version to build:
 ```bash
 > git clone https://github.com/lisa-analyzer/jlisa
-> cd jlisa
-> git checkout svcomp-2026
+> git clone https://github.com/lisa-analyzer/jlisa-witness-validator
 ```
 2. Create a GitHub Personal Access Token (PAT) by following [this guide](https://docs.github.com/en/enterprise-cloud@latest/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) and grant it the read:packages permission.
-3. Inside the JLISA project folder, create a file named gradle.properties with the following content:
+3. Inside each project folder, create a file named gradle.properties with the following content:
 ```bash
 gpr.user=your-github-username
 gpr.key=github-access-token
 ```
-4. Run the build_jlisa.sh script, specifying the JLISA project folder using the --jlisa-dir parameter. For example:
+4. Run the build_jlisa.sh script, giving the JLiSA project folder with `--jlisa-dir`, the JLiSA-Wit project folder with `--jlisa-wit-dir`, or both. At least one of the two is required, and the archive includes only the tools that are given. For example:
 ```bash
-> ./build_jlisa.sh --jlisa-dir ../jlisa/jlisa
+> ./build_jlisa.sh --jlisa-dir ../jlisa/jlisa --jlisa-wit-dir ../jlisa-witness-validator
 ```
-This script will generate a jlisa.zip file. The zip contains the executable along with the license, README, and smoketest script.
-To use JLISA, unzip the jlisa.zip file and run the executable:
+When both are given, JLiSA-Wit is built on the same JLiSA. When only `--jlisa-wit-dir` is given, JLiSA-Wit is built on the JLiSA checkout `../jlisa/jlisa` next to it, or on the one in the JLISA_HOME environment variable.
+
+This script will generate a jlisa.zip file. The zip contains the executable along with the license, README, and smoketest script. The script runs the smoketest on the unzipped archive at the end of the build.
+To run the smoketest on the sources instead, without building:
 ```bash
-> ./jlisa check --inputs "<input-file-1> <...> <input-file-N>" --property "<property-file.prp>"
+> JLISA="python3 main.py" bash dist-template/smoketest.sh
 ```
+
+#### Running the Executable
+Unzip the jlisa.zip file. `./jlisa components` lists the tools included in the archive.
+
+To verify a program:
+```bash
+> ./jlisa check --inputs "<input-1> <...> <input-N>" --property "<property-file.prp>"
+```
+The last line of the output is the verdict: TRUE (the property holds), FALSE (the property is violated) or UNKNOWN. The results of the analysis, and the violation witness, are written to the folder `outputs/` in the working directory (the witness is `outputs/witness/witness.graphml`).
+
+To validate a violation witness:
+```bash
+> ./jlisa validate --witness "<witness-file>" --inputs "<input-dir-1> <...> <input-dir-N>" --property "<property-file.prp>"
+```
+As for SV-COMP validators, the verdict is about the property, and the last line of the output is one of:
+- FALSE: the violation of the witness is reproduced, and the witness is confirmed (the line before it is `Witness Correct`)
+- TRUE: the program runs with the values of the witness without the violation, and the witness is rejected as spurious (`Witness Spurious`)
+- UNKNOWN: the witness could not be validated (`Could not validate`)
