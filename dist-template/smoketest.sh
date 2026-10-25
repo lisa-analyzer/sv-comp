@@ -46,6 +46,15 @@ if grep -qx jlisa <<< "$components"; then
   check valid-assert.prp TRUE "$TEST/01/Main.java"
   check valid-assert.prp TRUE "$TEST/02/Main.java"
   check valid-assert.prp UNKNOWN "$TEST/common/" "$TEST/nondet-assert/"
+  rm -f witness.yml
+  check valid-assert.prp FALSE "$TEST/03/Main.java"
+  expect "violation witness of check valid-assert.prp $TEST/03/Main.java" \
+    "$([ -f witness.yml ] && echo written || echo missing)" written
+  rm -f witness.yml
+  check no-runtime-exception.prp FALSE "$TEST/04/Main.java"
+  expect "violation witness of check no-runtime-exception.prp $TEST/04/Main.java" \
+    "$([ -f witness.yml ] && echo written || echo missing)" written
+  rm -f witness.yml
 else
   echo "skipped: jlisa not included"
 fi

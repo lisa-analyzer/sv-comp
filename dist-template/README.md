@@ -15,7 +15,7 @@ This archive contains the SV-COMP executable of JLiSA, the Java frontend of [LiS
 > ./jlisa check --property "<property-file.prp>" <input-1> <...> <input-N>
 ```
 
-The last line of the output is the verdict: TRUE (the property holds), FALSE (the property is violated) or UNKNOWN. The results of the analysis, and the violation witness, are written to the folder `outputs/` in the working directory (the witness is `outputs/witness/witness.graphml`).
+The last line of the output is the verdict: TRUE (the property holds), FALSE (the property is violated) or UNKNOWN. The results of the analysis are written to the folder `outputs/` in the working directory. When the verdict is FALSE because jlisa proves the violation, the violation witness is written to `witness.yml` in the working directory, in version 2.x of the SV-COMP witness format.
 
 #### Validating a violation witness
 

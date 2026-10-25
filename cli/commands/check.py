@@ -16,7 +16,7 @@ import typer
 
 # Project-local imports
 from cli.models.config import Config
-from cli.models.property import Property
+from cli.models.property import Property, SVCOMP_NAMES
 from cli.models.lisa_report.lisa_report import LisaReport
 from cli.commands.analyse import get_lisa_cmd
 from cli.utils.util import classify_asserts, AssertClassification, classify_runtime, RuntimeClassification
@@ -29,6 +29,8 @@ config = Config.get()
 # Constants
 PROPERTY_ASSERT_TEXT = "CHECK( init(Main.main()), LTL(G assert) )\n"
 PROPERTY_RUNTIME_TEXT = "CHECK(init(Main.main()), LTL(G ! uncaught(java.lang.RuntimeException)))\n"
+# the violation witness, in the working directory, where the validators of SV-COMP read it
+WITNESS_FILE = "witness.yml"
 
 @cli.command()
 def check(
@@ -52,10 +54,14 @@ def check(
 
     __use_writable_output_directory()
     __clean_output_directory()
+    Path(WITNESS_FILE).unlink(missing_ok=True)
     __validate_input_paths(inputs)
     property_to_check = __resolve_property(property)
 
-    lisa_report = __run_analysis(inputs)
+    property_file = property if Path(property).is_file() else None
+    if property_file is None:
+        print(f"jlisa: {property} is not a property file, no violation witness is written", file=sys.stderr)
+    lisa_report = __run_analysis(inputs, property_file)
 
     if lisa_report:
         __display_results(property_to_check, lisa_report, inputs, property)
@@ -108,8 +114,8 @@ def __validate_input_paths(inputs: list[str]) -> list[Path]:
 
     return paths
 
-def __run_analysis(inputs: list[str]) -> LisaReport | None:
-    command = get_lisa_cmd(config, inputs, None, 10)
+def __run_analysis(inputs: list[str], property_file: str | None) -> LisaReport | None:
+    command = get_lisa_cmd(config, inputs, None, 10, property_files=[property_file] if property_file else None)
 
     proc = subprocess.Popen(
         command,
@@ -143,10 +149,26 @@ def __display_results(property: Property, lisa_report: LisaReport, inputs: list[
         verdict = classify_runtime(lisa_report).value[1]
     else:
         return
+    __keep_witness(property, verdict == "FALSE")
     # bug finding fallback mode only if jlisa returns unknown and the flag is active (experimental).
     if verdict == "UNKNOWN" and config.enable_find_bug_fallback:
         verdict = __find_bug(inputs, property_file)
     __print_verdict(verdict)
+
+
+def __keep_witness(property: Property, keep: bool):
+    """
+    jlisa writes the violation witness of a definite violation of the property to
+    outputs/witness/<property>/witness.yml. It is moved to the working directory when the verdict is FALSE,
+    and removed otherwise.
+    """
+    witness = config.path_to_output_dir / "witness" / SVCOMP_NAMES[property] / WITNESS_FILE
+    if not witness.is_file():
+        return
+    if keep:
+        shutil.move(witness, WITNESS_FILE)
+    else:
+        witness.unlink()
 
 
 def __print_verdict(verdict: str):

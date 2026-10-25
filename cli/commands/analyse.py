@@ -25,6 +25,7 @@ from cli.commands.harvest import fetch_tasks, get_tasks
 
 # Project-local imports
 from cli.models.config import Config
+from cli.models.property import SVCOMP_NAMES
 from cli.models.task_definition.task_definition import TaskDefinition
 
 # CLI setup
@@ -139,7 +140,7 @@ def __perform_analysis(task: WorkerTask):
     # the input files of a harvested task are saved as one string, separated by spaces
     command = get_lisa_cmd(
         config, str(task.task.input_file).split(), f"results/{task.task.file_name}", task.max_memory,
-        debug=True
+        debug=True, property_files=__witness_property_files(task.task)
     )
 
     rich.print(
@@ -177,17 +178,34 @@ def __perform_analysis(task: WorkerTask):
         )
 
 
+def __witness_property_files(task: TaskDefinition) -> list[str]:
+    """
+    The property files of the task whose violation witnesses jlisa writes (valid-assert and
+    no-runtime-exception), as absolute paths.
+    """
+    witness_files = {f"{name}.prp" for name in SVCOMP_NAMES.values()}
+    return [
+        str((Path(task.path_to_definition).parent / prop.property_file).resolve())
+        for prop in task.properties
+        if Path(prop.property_file).name in witness_files
+    ]
+
+
 def get_lisa_cmd(
-    config: Config, input_files: list[str], file_name: str, max_memory: int, debug: bool = False
+    config: Config, input_files: list[str], file_name: str, max_memory: int, debug: bool = False,
+    property_files: list[str] | None = None
 ) -> list[str]:
     """
     Get the command to run LiSA from the configuration file, as a list of arguments. With debug, jlisa
     also writes the debug information (open calls, bottom states) and the exceptions that the statistics use.
+    For each property file, jlisa also writes the violation witness of a definite violation of that property,
+    to witness/<property>/witness.yml in the output directory.
 
     The command is:
         java -Xmx<max_memory>G -cp <path_to_lisa_instance> it.unive.jlisa.Main
             -s <input-1> <...> <input-N> -o <output-dir>
             -n ConstantPropagation -m Statistics -c Assert --no-html --l ERROR [-d -e]
+            [--svcomp-property <property-file-1> <...> --svcomp-property <property-file-N>]
     """
     out = (
         str(config.path_to_output_dir)
@@ -208,4 +226,6 @@ def get_lisa_cmd(
         "-c", "Assert",
         "--no-html",
         "--l", "ERROR",
-    ] + (["-d", "-e"] if debug else [])
+    ] + (["-d", "-e"] if debug else []) + [
+        arg for property_file in (property_files or []) for arg in ("--svcomp-property", property_file)
+    ]

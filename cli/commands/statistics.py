@@ -19,6 +19,7 @@ from rich.text import Text
 from cli.commands.harvest import get_task, get_tasks
 from cli.models.config import Config
 from cli.models.lisa_report.lisa_report import LisaReport
+from cli.models.property import Property, SVCOMP_NAMES
 from cli.models.task_definition.task_definition import TaskDefinition
 from cli.utils.util import (
     AssertClassification,
@@ -211,6 +212,7 @@ def __compute_score(results_dir: str, file_name: str) -> DataFrame:
                 "\n".join(due_runtime),
                 lisa_report.count_bottom_notices(),
                 lisa_report.count_open_call_notices(),
+                __witness(results_dir, Property.RUNTIME),
             ]
         )
     if task.are_assertions_expected() is not None:
@@ -222,6 +224,7 @@ def __compute_score(results_dir: str, file_name: str) -> DataFrame:
                 "\n".join(due_assert),
                 lisa_report.count_bottom_notices(),
                 lisa_report.count_open_call_notices(),
+                __witness(results_dir, Property.ASSERT),
             ]
         )
 
@@ -234,6 +237,7 @@ def __compute_score(results_dir: str, file_name: str) -> DataFrame:
             "Due to",
             "Num Bottom",
             "Num Open Calls",
+            "Witness",
         ],
     )
 
@@ -242,6 +246,15 @@ def __compute_score(results_dir: str, file_name: str) -> DataFrame:
         lisa_report.get_bottom_notices(),
         lisa_report.get_open_call_notices(),
     )
+
+
+def __witness(results_dir: str, property: Property) -> str:
+    """
+    "yes" if jlisa wrote the violation witness of the property, in witness/<property>/witness.yml of the
+    results of the task, otherwise "".
+    """
+    witness = os.path.join(results_dir, "witness", SVCOMP_NAMES[property], "witness.yml")
+    return "yes" if os.path.isfile(witness) else ""
 
 
 def __score_assertions(
@@ -448,6 +461,21 @@ def __save_summary(
     count_bot = int(scores["Num Bottom"].sum())
     count_open = int(scores["Num Open Calls"].sum())
 
+    # the violation witnesses of each property, and the correct FALSE results of that property (the verdict is
+    # FALSE and the expected verdict is False)
+    witness_lines = []
+    for name, label in (("runtime", "Runtime"), ("assert", "Assert")):
+        rows = scores.loc[scores["Test case"].str.contains(rf"\|{name}\|", na=False)]
+        # the rows of tasks with errors or timeouts have no witness. When every task has one, the column is missing
+        written = rows["Witness"] == "yes" if "Witness" in rows else pandas.Series(False, index=rows.index)
+        correct_false = (rows["Virdict"] == "FALSE") & rows["Test case"].str.endswith("|False")
+        witness_lines.append(
+            f"{label}: [bold blue]{int(written.sum())}[/bold blue] written, "
+            f"[bold blue]{int((written & correct_false).sum())}[/bold blue] of {int(correct_false.sum())} "
+            "correct FALSE results with a witness"
+        )
+    witness_lines[-1] += "\n"
+
     summary_lines = [
         f"Test files: [bold blue]{len(all_tasks)}[/bold blue]",
         f"Test files with assert task: [bold blue]{assert_tasks}[/bold blue]",
@@ -462,6 +490,8 @@ def __save_summary(
         f"Normalized: [bold green]{norm_score}[/bold green]",
         f"Runtime: [bold blue]{runtime_score}[/bold blue]",
         f"Assert: [bold yellow]{assert_score}[/bold yellow]\n",
+        "[italic]Violation witnesses[/italic]",
+        *witness_lines,
         "[red bold]Errors[/red bold] (check corresponding .csv files)",
         f"Parsing: [bold red]{parsing_error_counter}[/bold red]",
         f"Frontend: [bold red]{frontend_error_counter}[/bold red]",
