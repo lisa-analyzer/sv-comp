@@ -25,7 +25,13 @@ config = Config.get()
 
 
 @cli.command()
-def harvest():
+def harvest(
+    only: Optional[Path] = typer.Option(
+        None, "--only",
+        help="File with the tasks to keep, one per line: the name or the path of the .yml file "
+             "(lines starting with # are skipped). Without it, all tasks are kept."
+    )
+):
     """
         Harvests task definitions (.yml files) and saves them in tasks.json
     """
@@ -37,7 +43,25 @@ def harvest():
     rich.print("[yellow]Harvesting task definitions from SV-COMP benchmark directory...[/yellow]")
 
     definitions = fetch_tasks()
+    if only is not None:
+        definitions = __keep_only(definitions, only)
     __save_tasks(definitions)
+
+
+def __keep_only(definitions: list[TaskDefinition], only: Path) -> list[TaskDefinition]:
+    """
+        Keeps the tasks listed in the given file, by the name or the path of their .yml file.
+        A listed task that is not found is reported.
+    """
+    wanted = [line.strip() for line in only.read_text().splitlines()
+              if line.strip() and not line.strip().startswith("#")]
+    names = {Path(entry).name for entry in wanted}
+    kept = [d for d in definitions if d.file_name in names]
+    missing = names - {d.file_name for d in kept}
+    for name in sorted(missing):
+        rich.print(f"[red]Task not found:[/red] {name}")
+    rich.print(f"[yellow]Kept {len(kept)} of {len(definitions)} tasks from[/yellow] [italic]{only}[/italic].")
+    return kept
 
 def fetch_tasks(benchmark_dir_path_from_cli: Optional[Path] = None) -> list[TaskDefinition]:
     """
