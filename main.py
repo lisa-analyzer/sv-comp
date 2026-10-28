@@ -41,6 +41,7 @@ from cli.commands.check import cli as check
 from cli.commands.validate import cli as validate
 from cli.commands.components import cli as components
 from cli.commands.statistics import cli as statistics
+from cli.commands.find_bug import cli as find_bug
 from cli.commands.compare import cli as compare
 from cli.commands.version import cli as version
 
@@ -51,6 +52,7 @@ cli.add_typer(check)
 cli.add_typer(validate)
 cli.add_typer(components)
 cli.add_typer(statistics)
+cli.add_typer(find_bug)
 cli.add_typer(compare)
 cli.add_typer(version)
 
