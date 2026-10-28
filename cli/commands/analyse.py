@@ -204,7 +204,7 @@ def get_lisa_cmd(
     The command is:
         java -Xmx<max_memory>G -cp <path_to_lisa_instance> it.unive.jlisa.Main
             -s <input-1> <...> <input-N> -o <output-dir>
-            -n ConstantPropagation -m Statistics -c Assert --no-html --l ERROR [-d -e]
+            -n <numerical_domain> -m Statistics -c Assert --no-html --l ERROR [-d -e] [--no-graphs]
             [--svcomp-property <property-file-1> <...> --svcomp-property <property-file-N>]
     """
     out = (
@@ -221,11 +221,11 @@ def get_lisa_cmd(
         "it.unive.jlisa.Main",
         "-s", *input_files,
         "-o", out,
-        "-n", "ConstantPropagation",
+        "-n", config.numerical_domain,
         "-m", "Statistics",
         "-c", "Assert",
         "--no-html",
         "--l", "ERROR",
-    ] + (["-d", "-e"] if debug else []) + [
+    ] + (["-d", "-e"] if debug else []) + ([] if config.jlisa_graphs else ["--no-graphs"]) + [
         arg for property_file in (property_files or []) for arg in ("--svcomp-property", property_file)
     ]

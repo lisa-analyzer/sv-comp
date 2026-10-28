@@ -34,6 +34,10 @@ class Config:
     # internal feature flag: on UNKNOWN, look for a violation with the bug-finding mode of jlisa-wit
     enable_find_bug_fallback: bool = False
     find_bug_time_limit: int = 120
+    # the numerical domain of jlisa (option -n)
+    numerical_domain: str = "ConstantPropagation"
+    # whether jlisa writes the JSON graphs of the analyzed methods (off: option --no-graphs)
+    jlisa_graphs: bool = True
 
     @classmethod
     def get(cls) -> 'Config':
@@ -59,7 +63,9 @@ class Config:
             path_to_output_dir=Path(out_dir) if out_dir else None,
             path_to_jlisa_wit_instance=Path(jlisa_wit_inst) if jlisa_wit_inst else None,
             enable_find_bug_fallback=config_dict.get('enable_find_bug_fallback', False),
-            find_bug_time_limit=config_dict.get('find_bug_time_limit', 120)
+            find_bug_time_limit=config_dict.get('find_bug_time_limit', 120),
+            numerical_domain=config_dict.get('numerical_domain', "ConstantPropagation"),
+            jlisa_graphs=config_dict.get('jlisa_graphs', True)
         )
 
     @staticmethod
