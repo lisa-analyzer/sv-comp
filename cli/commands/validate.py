@@ -12,7 +12,7 @@ import typer
 
 # Project-local imports
 from cli.models.config import Config
-from cli.utils.jlisa_wit import parse_property, run_jlisa_wit
+from cli.utils.jlisa_wit import run_jlisa_wit
 
 # CLI setup
 cli = typer.Typer()
@@ -59,12 +59,8 @@ def validate(
         print(f"property file not found: {property}", file=sys.stderr)
         raise typer.Exit(code=1)
 
-    property_name = parse_property(property)
-    if property_name is None:
-        print(f"unsupported property: {property}", file=sys.stderr)
-        raise typer.Exit(code=1)
-
-    output = run_jlisa_wit(config, inputs, property_name, ["--witness", os.path.abspath(witness)])
+    # jlisa-wit reads the property file, and cannot validate other properties
+    output = run_jlisa_wit(config, inputs, property, ["--witness", os.path.abspath(witness)])
 
     verdicts = [line.strip() for line in output.splitlines() if line.strip() in VERDICTS]
     verdict = verdicts[-1] if verdicts else "Could not validate"

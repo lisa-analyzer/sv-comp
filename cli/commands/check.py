@@ -20,7 +20,7 @@ from cli.models.property import Property, SVCOMP_NAMES
 from cli.models.lisa_report.lisa_report import LisaReport
 from cli.commands.analyse import get_lisa_cmd
 from cli.utils.util import classify_asserts, AssertClassification, classify_runtime, RuntimeClassification
-from cli.utils.jlisa_wit import parse_property, run_jlisa_wit
+from cli.utils.jlisa_wit import run_jlisa_wit
 
 # CLI setup
 cli = typer.Typer()
@@ -185,22 +185,27 @@ def __find_bug(inputs: list[str], property_file: str) -> str:
     """
     when jlisa returns unknown, look for inputs that violate the property, with the bug-finding mode of
     jlisa-wit (it runs the program and only reports a violation that a run really reaches).
-    Returns FALSE if it finds one, otherwise UNKNOWN. It never returns TRUE.
+    Returns FALSE if it finds one, otherwise UNKNOWN. It never returns TRUE. With FALSE, jlisa-wit writes the
+    violation witness to the working directory (when it can tell where the program reads its values and
+    where the violation happens).
     """
     paths = inputs
     if (not config.has_jlisa_wit() or not Path(property_file).is_file()
             or not all(Path(p).is_dir() for p in paths)):
         return "UNKNOWN"
-    property_name = parse_property(property_file)
-    if property_name is None:
-        return "UNKNOWN"
     time_limit = config.find_bug_time_limit
+    witness = Path(WITNESS_FILE).absolute()
     try:
-        output = run_jlisa_wit(config, paths, property_name, ["--find-bug", "--time-limit", str(time_limit)],
+        output = run_jlisa_wit(config, paths, property_file,
+                               ["--find-bug", "--time-limit", str(time_limit), "--witness-output", str(witness)],
                                timeout=float(time_limit) + 60)
     except (subprocess.TimeoutExpired, OSError) as e:
         print(f"jlisa: UNKNOWN; bug finding failed: {e}", file=sys.stderr)
         return "UNKNOWN"
     found = "Violation found" in [line.strip() for line in output.splitlines()]
-    print(f"jlisa: UNKNOWN; bug finding: {'violation found' if found else 'nothing found'}", file=sys.stderr)
+    if not found:
+        witness.unlink(missing_ok=True)
+    print(f"jlisa: UNKNOWN; bug finding: {'violation found' if found else 'nothing found'}"
+          f"{'' if not found else ', with a witness' if witness.is_file() else ', without a witness'}",
+          file=sys.stderr)
     return "FALSE" if found else "UNKNOWN"

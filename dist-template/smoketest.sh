@@ -45,7 +45,15 @@ validate() {
 if grep -qx jlisa <<< "$components"; then
   check valid-assert.prp TRUE "$TEST/01/Main.java"
   check valid-assert.prp TRUE "$TEST/02/Main.java"
-  check valid-assert.prp UNKNOWN "$TEST/common/" "$TEST/nondet-assert/"
+  rm -f witness.yml
+  if grep -qx find-bug <<< "$components"; then
+    # jlisa cannot tell, the bug-finding mode of jlisa-wit finds the violation and writes its witness
+    check valid-assert.prp FALSE "$TEST/common/" "$TEST/nondet-assert/"
+    expect "violation witness of check valid-assert.prp $TEST/common/ $TEST/nondet-assert/" \
+      "$([ -f witness.yml ] && echo written || echo missing)" written
+  else
+    check valid-assert.prp UNKNOWN "$TEST/common/" "$TEST/nondet-assert/"
+  fi
   rm -f witness.yml
   check valid-assert.prp FALSE "$TEST/03/Main.java"
   expect "violation witness of check valid-assert.prp $TEST/03/Main.java" \

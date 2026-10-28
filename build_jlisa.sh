@@ -6,14 +6,18 @@ JLISA_WIT_BIN_DIR="jlisa-wit"
 VENV_DIR=".sv-comp_venv"
 
 usage() {
-    echo "Usage: $0 [--jlisa-dir PATH_TO_JLISA] [--jlisa-wit-dir PATH_TO_JLISA_WIT]"
+    echo "Usage: $0 [--jlisa-dir PATH_TO_JLISA] [--jlisa-wit-dir PATH_TO_JLISA_WIT] [--find-bug [SECONDS]]"
     echo "At least one of the two is required: the archive includes only the tools that are given."
+    echo "--find-bug: when jlisa ends with UNKNOWN, \`jlisa check\` looks for a violation with the bug-finding"
+    echo "mode of jlisa-wit, for SECONDS (default 120); it needs --jlisa-wit-dir."
     exit 1
 }
 
 JLISA_DIR=""
 # jlisa-wit, run by `jlisa validate`
 JLISA_WIT_DIR=""
+# the time of the bug-finding fallback of `jlisa check`, in seconds, or empty for no fallback
+FIND_BUG_SECONDS=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -24,6 +28,15 @@ while [[ $# -gt 0 ]]; do
         --jlisa-wit-dir)
             JLISA_WIT_DIR="$2"
             shift 2
+            ;;
+        --find-bug)
+            if [[ "${2:-}" =~ ^[0-9]+$ ]]; then
+                FIND_BUG_SECONDS="$2"
+                shift 2
+            else
+                FIND_BUG_SECONDS="120"
+                shift
+            fi
             ;;
         --help|-h)
             usage
@@ -37,6 +50,10 @@ done
 
 if [[ -z "$JLISA_DIR" && -z "$JLISA_WIT_DIR" ]]; then
     echo "Error: at least one of --jlisa-dir and --jlisa-wit-dir is required."
+    usage
+fi
+if [[ -n "$FIND_BUG_SECONDS" && -z "$JLISA_WIT_DIR" ]]; then
+    echo "Error: --find-bug needs --jlisa-wit-dir."
     usage
 fi
 
@@ -124,6 +141,11 @@ if [[ -n "$JLISA_WIT_DIR" ]]; then
     INCLUDE_ITEMS+=("$JLISA_WIT_BIN_DIR:$JLISA_WIT_BIN_DIR")
     CONFIG_ENTRIES+="
     \"path_to_jlisa_wit_instance\": \"\\\"${JLISA_WIT_BIN_DIR}/lib/*\\\"\","
+    if [[ -n "$FIND_BUG_SECONDS" ]]; then
+        CONFIG_ENTRIES+="
+    \"enable_find_bug_fallback\": true,
+    \"find_bug_time_limit\": ${FIND_BUG_SECONDS},"
+    fi
 fi
 
 CONFIG_JSON="$SV_COMP_DIR/config.json"
