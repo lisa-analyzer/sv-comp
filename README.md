@@ -67,6 +67,10 @@ There are two ways to carry out the analysis. First, the iterative (start by `py
  > python main.py analyse -b [...] --lisadir [...] --outdir [...]
 ```
 
+With `--bug-finding-fallback`, as `check` does, `analyse` looks for a violation with the bug-finding mode of jlisa-wit after each analysis where jlisa ends with UNKNOWN or fails (not after a timeout), for `--bug-finding-time-limit` seconds (default 120). Its verdict is saved in `bug-finding/<property>.txt` in the results of the task, and the witness of a violation found replaces the one of jlisa. `statistics` counts these results as `FALSE (bug finding)`, and reports the score of jlisa alone, the points of the bug finding, and the final score.
+
+With `--validate-witnesses`, after the analyses `analyse` validates every violation witness written by jlisa (and by the bug finding) with jlisa-wit (part of the jlisa package), so that one run covers both verification and validation. The verdict of each witness is saved in `validation.txt` next to it and in `witness-validation.csv`, and `statistics` reports, for each property, how many witnesses were written and how many were validated successfully.
+
 ### Comparing Results
 
 The CLI tool comes along with the `compare` command. It allows to diff two results tables produced by `statistics` command.
@@ -157,23 +161,21 @@ The Docker image can be run as follows
 - Python 3.12 or higher
 - zip and unzip utilities installed
 ##### Building
-To build the SV-COMP executable, a shell script is provided. The archive can include JLiSA (the verifier, run by `jlisa check`), JLiSA-Wit (the violation witness validator, run by `jlisa validate`), or both.
-1. Clone the repositories of the tools to include, and check out the version to build:
+To build the SV-COMP executable, a shell script is provided. The archive includes JLiSA (the verifier, run by `jlisa check`) and JLiSA-Wit (the violation witness validator, run by `jlisa validate`), which is part of the JLiSA package.
+1. Clone the JLiSA repository, and check out the version to build:
 ```bash
 > git clone https://github.com/lisa-analyzer/jlisa
-> git clone https://github.com/lisa-analyzer/jlisa-witness-validator
 ```
 2. Create a GitHub Personal Access Token (PAT) by following [this guide](https://docs.github.com/en/enterprise-cloud@latest/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) and grant it the read:packages permission.
-3. Inside each project folder, create a file named gradle.properties with the following content:
+3. Inside the project folder, create a file named gradle.properties with the following content:
 ```bash
 gpr.user=your-github-username
 gpr.key=github-access-token
 ```
-4. Run the build_jlisa.sh script, giving the JLiSA project folder with `--jlisa-dir`, the JLiSA-Wit project folder with `--jlisa-wit-dir`, or both. At least one of the two is required, and the archive includes only the tools that are given. For example:
+4. Run the build_jlisa.sh script, giving the JLiSA project folder with `--jlisa-dir`. For example:
 ```bash
-> ./build_jlisa.sh --jlisa-dir ../jlisa/jlisa --jlisa-wit-dir ../jlisa-witness-validator
+> ./build_jlisa.sh --jlisa-dir ../jlisa/jlisa
 ```
-When both are given, JLiSA-Wit is built on the same JLiSA. When only `--jlisa-wit-dir` is given, JLiSA-Wit is built on the JLiSA checkout `../jlisa/jlisa` next to it, or on the one in the JLISA_HOME environment variable.
 
 This script will generate a jlisa.zip file. The zip contains the executable along with the license, README, and smoketest script. The script runs the smoketest on the unzipped archive at the end of the build.
 To run the smoketest on the sources instead, without building:

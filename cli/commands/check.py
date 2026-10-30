@@ -18,9 +18,8 @@ import typer
 from cli.models.config import Config
 from cli.models.property import Property, SVCOMP_NAMES
 from cli.models.lisa_report.lisa_report import LisaReport
-from cli.commands.analyse import get_lisa_cmd
 from cli.utils.util import classify_asserts, AssertClassification, classify_runtime, RuntimeClassification
-from cli.utils.jlisa_wit import parse_property, run_jlisa_wit
+from cli.utils.jlisa import BUG_FINDING_TIME_LIMIT, find_bug, get_lisa_cmd
 
 # CLI setup
 cli = typer.Typer()
@@ -42,7 +41,15 @@ def check(
             ...,
             "-p",
             "--property",
-            help="Provide path to the property file or property name to check")):
+            help="Provide path to the property file or property name to check"),
+        bug_finding_fallback: bool = typer.Option(
+            False,
+            "--bug-finding-fallback",
+            help="When jlisa ends with UNKNOWN or fails, look for a violation with the bug-finding mode of jlisa-wit"),
+        bug_finding_time_limit: int = typer.Option(
+            BUG_FINDING_TIME_LIMIT,
+            "--bug-finding-time-limit",
+            help="Time of the search of the bug-finding fallback, in seconds")):
     """
     Check input files against a specified property
     """
@@ -63,8 +70,13 @@ def check(
         print(f"jlisa: {property} is not a property file, no violation witness is written", file=sys.stderr)
     lisa_report = __run_analysis(inputs, property_file)
 
+    # the time of the search of the bug-finding fallback, or None without it
+    time_limit = bug_finding_time_limit if bug_finding_fallback else None
     if lisa_report:
-        __display_results(property_to_check, lisa_report, inputs, property)
+        __display_results(property_to_check, lisa_report, inputs, property, time_limit)
+    else:
+        # jlisa failed (e.g., a construct its frontend does not support): only the bug finding can still tell
+        __print_verdict(__bug_finding(inputs, property, time_limit) if time_limit else "UNKNOWN")
 
 
 def __use_writable_output_directory():
@@ -125,16 +137,16 @@ def __run_analysis(inputs: list[str], property_file: str | None) -> LisaReport |
     )
     
     try:
-        proc.wait()
+        # reads the output while waiting: a full pipe would block jlisa
+        _, errors = proc.communicate()
         if proc.returncode == 0:
             report_path = config.path_to_output_dir / "report.json"
             with open(report_path, encoding="utf-8") as f:
                 return LisaReport(**json.load(f))
         else:
             rich.print(f"[bold red]LiSA analysis failed with exit code {proc.returncode}[/bold red]")
-            if proc.stderr:
-                error_output = proc.stderr.read().strip()
-                rich.print(f"[red]Error: {error_output}[/red]")
+            if errors:
+                rich.print(f"[red]Error: {errors.strip()}[/red]")
         return None
     except Exception as e:
         rich.print(f"[bold red]An unexpected error occurred:[/bold red] {e}")
@@ -142,7 +154,8 @@ def __run_analysis(inputs: list[str], property_file: str | None) -> LisaReport |
         return None
 
 
-def __display_results(property: Property, lisa_report: LisaReport, inputs: list[str], property_file: str):
+def __display_results(property: Property, lisa_report: LisaReport, inputs: list[str], property_file: str,
+                      time_limit: int | None):
     if property == Property.ASSERT:
         verdict = classify_asserts(lisa_report).value[1]
     elif property == Property.RUNTIME:
@@ -150,9 +163,9 @@ def __display_results(property: Property, lisa_report: LisaReport, inputs: list[
     else:
         return
     __keep_witness(property, verdict == "FALSE")
-    # bug finding fallback mode only if jlisa returns unknown and the flag is active (experimental).
-    if verdict == "UNKNOWN" and config.enable_find_bug_fallback:
-        verdict = __find_bug(inputs, property_file)
+    # the bug-finding fallback, only with --bug-finding-fallback
+    if verdict == "UNKNOWN" and time_limit:
+        verdict = __bug_finding(inputs, property_file, time_limit)
     __print_verdict(verdict)
 
 
@@ -181,26 +194,12 @@ def __print_verdict(verdict: str):
             rich.print("[bold orange3]UNKNOWN[/bold orange3]")
 
 
-def __find_bug(inputs: list[str], property_file: str) -> str:
+def __bug_finding(inputs: list[str], property_file: str, time_limit: int) -> str:
     """
-    when jlisa returns unknown, look for inputs that violate the property, with the bug-finding mode of
-    jlisa-wit (it runs the program and only reports a violation that a run really reaches).
-    Returns FALSE if it finds one, otherwise UNKNOWN. It never returns TRUE.
+    The bug-finding fallback, when jlisa ends with UNKNOWN or fails: jlisa-wit looks for inputs that violate the
+    property, and writes the violation witness of the violation it finds to the working directory. Returns FALSE
+    if it finds one, otherwise UNKNOWN; it never returns TRUE.
     """
-    paths = inputs
-    if (not config.has_jlisa_wit() or not Path(property_file).is_file()
-            or not all(Path(p).is_dir() for p in paths)):
-        return "UNKNOWN"
-    property_name = parse_property(property_file)
-    if property_name is None:
-        return "UNKNOWN"
-    time_limit = config.find_bug_time_limit
-    try:
-        output = run_jlisa_wit(config, paths, property_name, ["--find-bug", "--time-limit", str(time_limit)],
-                               timeout=float(time_limit) + 60)
-    except (subprocess.TimeoutExpired, OSError) as e:
-        print(f"jlisa: UNKNOWN; bug finding failed: {e}", file=sys.stderr)
-        return "UNKNOWN"
-    found = "Violation found" in [line.strip() for line in output.splitlines()]
-    print(f"jlisa: UNKNOWN; bug finding: {'violation found' if found else 'nothing found'}", file=sys.stderr)
-    return "FALSE" if found else "UNKNOWN"
+    verdict, reason = find_bug(config, inputs, property_file, time_limit, Path(WITNESS_FILE).absolute())
+    print(f"jlisa: UNKNOWN; bug finding: {verdict}{f' ({reason})' if reason else ''}", file=sys.stderr)
+    return "FALSE" if verdict == "FALSE" else "UNKNOWN"

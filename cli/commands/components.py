@@ -16,10 +16,10 @@ config = Config.get()
 @cli.command()
 def components():
     """
-        Lists the tools included in this build, one per line: jlisa (check) and jlisa-wit (validate)
+        Lists the tools included in this build, one per line: jlisa (check) and jlisa-wit (validate, and the
+        bug-finding fallback of check), both from the jlisa package
     """
 
     if config.has_jlisa():
         print("jlisa")
-    if config.has_jlisa_wit():
         print("jlisa-wit")
