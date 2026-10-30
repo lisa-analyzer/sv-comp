@@ -27,6 +27,9 @@ from cli.commands.harvest import fetch_tasks, get_tasks
 from cli.models.config import Config
 from cli.models.property import SVCOMP_NAMES
 from cli.models.task_definition.task_definition import TaskDefinition
+from cli.utils.bug_finding import run_bug_finding_fallback
+from cli.utils.jlisa import BUG_FINDING_TIME_LIMIT, get_lisa_cmd, property_files
+from cli.utils.witness_validation import validate_run_witnesses
 
 # CLI setup
 cli = typer.Typer()
@@ -44,6 +47,7 @@ class WorkerTask:
         total_tasks: int,
         task_idx: int,
         lock: Lock,
+        bug_finding_time_limit: int | None,
     ):
         self.task = task
         self.start_time = start_time
@@ -53,6 +57,8 @@ class WorkerTask:
         self.total_tasks = total_tasks
         self.task_idx = task_idx
         self.lock = lock
+        # the time of the search of the bug-finding fallback, or None without it
+        self.bug_finding_time_limit = bug_finding_time_limit
 
 
 @cli.command()
@@ -89,6 +95,25 @@ def analyse(
         Optional[int],
         typer.Option("--parallelism", "-p", help="Number of parallel analyses to run"),
     ] = 1,
+    validate_witnesses: Annotated[
+        bool,
+        typer.Option(
+            "--validate-witnesses",
+            help="After the analyses, validate every violation witness written by jlisa with jlisa-wit",
+        ),
+    ] = False,
+    bug_finding_fallback: Annotated[
+        bool,
+        typer.Option(
+            "--bug-finding-fallback",
+            help="As check, after each analysis where jlisa ends with UNKNOWN or fails, look for a violation "
+                 "with the bug-finding mode of jlisa-wit",
+        ),
+    ] = False,
+    bug_finding_time_limit: Annotated[
+        int,
+        typer.Option("--bug-finding-time-limit", help="Time of the search of the bug-finding fallback, in seconds"),
+    ] = BUG_FINDING_TIME_LIMIT,
 ):
     """
     Sends collected tasks to the LiSA instance for analysis
@@ -123,7 +148,8 @@ def analyse(
         i = 1
         for task in tasks:
             tsk = WorkerTask(
-                task, start_time, timeout, max_memory, timed_out, total_tasks, i, lock
+                task, start_time, timeout, max_memory, timed_out, total_tasks, i, lock,
+                bug_finding_time_limit if bug_finding_fallback else None
             )
             i += 1
             executor.submit(__perform_analysis, tsk)
@@ -135,12 +161,17 @@ def analyse(
                 rich.print(f"[red]- {t}[/red]")
                 f.write(f"{t}\n")
 
+    if validate_witnesses:
+        validate_run_witnesses(
+            config, [(task, f) for task in tasks for f in property_files(task)], timeout, parallelism
+        )
+
 
 def __perform_analysis(task: WorkerTask):
     # the input files of a harvested task are saved as one string, separated by spaces
     command = get_lisa_cmd(
         config, str(task.task.input_file).split(), f"results/{task.task.file_name}", task.max_memory,
-        debug=True, property_files=__witness_property_files(task.task)
+        debug=True, property_files=property_files(task.task)
     )
 
     rich.print(
@@ -169,6 +200,8 @@ def __perform_analysis(task: WorkerTask):
         rich.print(
             f"[yellow]Command {task.task_idx} terminated. Elapsed time: {elapsed_hms}[/yellow]"
         )
+        # as in check, a timeout leaves no time to the bug finding
+        return
     except Exception as e:
         print(f"An unexpected error occurred: {e}", file=sys.stderr)
         elapsed = time.time() - task.start_time
@@ -177,55 +210,6 @@ def __perform_analysis(task: WorkerTask):
             f"[red]Command {task.task_idx} failed. Elapsed time: {elapsed_hms}[/red]"
         )
 
-
-def __witness_property_files(task: TaskDefinition) -> list[str]:
-    """
-    The property files of the task whose violation witnesses jlisa writes (valid-assert and
-    no-runtime-exception), as absolute paths.
-    """
-    witness_files = {f"{name}.prp" for name in SVCOMP_NAMES.values()}
-    return [
-        str((Path(task.path_to_definition).parent / prop.property_file).resolve())
-        for prop in task.properties
-        if Path(prop.property_file).name in witness_files
-    ]
-
-
-def get_lisa_cmd(
-    config: Config, input_files: list[str], file_name: str, max_memory: int, debug: bool = False,
-    property_files: list[str] | None = None
-) -> list[str]:
-    """
-    Get the command to run LiSA from the configuration file, as a list of arguments. With debug, jlisa
-    also writes the debug information (open calls, bottom states) and the exceptions that the statistics use.
-    For each property file, jlisa also writes the violation witness of a definite violation of that property,
-    to witness/<property>/witness.yml in the output directory.
-
-    The command is:
-        java -Xmx<max_memory>G -cp <path_to_lisa_instance> it.unive.jlisa.Main
-            -s <input-1> <...> <input-N> -o <output-dir>
-            -n <numerical_domain> -m Statistics -c Assert --no-html --l ERROR [-d -e] [--no-graphs]
-            [--svcomp-property <property-file-1> <...> --svcomp-property <property-file-N>]
-    """
-    out = (
-        str(config.path_to_output_dir)
-        if not file_name
-        else f"{str(config.path_to_output_dir)}/{file_name}"
-    )
-    # the classpath is saved with the quotes of a shell command line, and no shell runs the command
-    classpath = str(config.path_to_lisa_instance).replace('"', '')
-    return [
-        "java",
-        f"-Xmx{max_memory}G",
-        "-cp", classpath,
-        "it.unive.jlisa.Main",
-        "-s", *input_files,
-        "-o", out,
-        "-n", config.numerical_domain,
-        "-m", "Statistics",
-        "-c", "Assert",
-        "--no-html",
-        "--l", "ERROR",
-    ] + (["-d", "-e"] if debug else []) + ([] if config.jlisa_graphs else ["--no-graphs"]) + [
-        arg for property_file in (property_files or []) for arg in ("--svcomp-property", property_file)
-    ]
+    if task.bug_finding_time_limit:
+        run_bug_finding_fallback(config, task.task, Path(str(config.path_to_output_dir)) / "results" / task.task.file_name,
+                                 task.bug_finding_time_limit)

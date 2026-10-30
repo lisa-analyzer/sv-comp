@@ -30,10 +30,6 @@ class Config:
     path_to_sv_comp_benchmark_dir: Optional[Path] = None
     path_to_lisa_instance: Optional[Path] = None
     path_to_output_dir: Optional[Path] = None
-    path_to_jlisa_wit_instance: Optional[Path] = None
-    # internal feature flag: on UNKNOWN, look for a violation with the bug-finding mode of jlisa-wit
-    enable_find_bug_fallback: bool = False
-    find_bug_time_limit: int = 120
     # the numerical domain of jlisa (option -n)
     numerical_domain: str = "ConstantPropagation"
     # whether jlisa writes the JSON graphs of the analyzed methods (off: option --no-graphs)
@@ -54,16 +50,12 @@ class Config:
         config_dict = json.loads(config_file.read_text())
         bench_dir = config_dict.get('path_to_sv_comp_benchmark_dir')
         lisa_inst = cls.__resolve_classpath(config_dict.get('path_to_lisa_instance'))
-        jlisa_wit_inst = cls.__resolve_classpath(config_dict.get('path_to_jlisa_wit_instance'))
         out_dir = config_dict.get('path_to_output_dir')
         
         return cls(
             path_to_sv_comp_benchmark_dir=Path(bench_dir) if bench_dir else None,
             path_to_lisa_instance=Path(lisa_inst) if lisa_inst else None,
             path_to_output_dir=Path(out_dir) if out_dir else None,
-            path_to_jlisa_wit_instance=Path(jlisa_wit_inst) if jlisa_wit_inst else None,
-            enable_find_bug_fallback=config_dict.get('enable_find_bug_fallback', False),
-            find_bug_time_limit=config_dict.get('find_bug_time_limit', 120),
             numerical_domain=config_dict.get('numerical_domain', "ConstantPropagation"),
             jlisa_graphs=config_dict.get('jlisa_graphs', True)
         )
@@ -92,9 +84,6 @@ class Config:
     def has_jlisa(self) -> bool:
         return self.path_to_lisa_instance is not None and self.lib_dir(self.path_to_lisa_instance).is_dir()
 
-    def has_jlisa_wit(self) -> bool:
-        return self.path_to_jlisa_wit_instance is not None and self.lib_dir(self.path_to_jlisa_wit_instance).is_dir()
-
     def is_empty(self) -> bool:
         """
             A utility method to check if the configuration is empty
@@ -103,8 +92,7 @@ class Config:
         return (
                 self.path_to_sv_comp_benchmark_dir is None and
                 self.path_to_lisa_instance is None and
-                self.path_to_output_dir is None and
-                self.path_to_jlisa_wit_instance is None
+                self.path_to_output_dir is None
         )
 
     def save(self):

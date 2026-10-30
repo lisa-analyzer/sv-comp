@@ -1,6 +1,6 @@
 ### JLiSA for SV-COMP
 
-This archive contains the SV-COMP executable of JLiSA, the Java frontend of [LiSA](https://github.com/lisa-analyzer/lisa). It can include two tools:
+This archive contains the SV-COMP executable of JLiSA, the Java frontend of [LiSA](https://github.com/lisa-analyzer/lisa). It includes two tools, both from the JLiSA package:
 - JLiSA, the verifier, run by `jlisa check`
 - JLiSA-Wit, the violation witness validator, run by `jlisa validate`
 
@@ -16,6 +16,12 @@ This archive contains the SV-COMP executable of JLiSA, the Java frontend of [LiS
 ```
 
 The last line of the output is the verdict: TRUE (the property holds), FALSE (the property is violated) or UNKNOWN. The results of the analysis are written to the folder `outputs/` in the working directory. When the verdict is FALSE because jlisa proves the violation, the violation witness is written to `witness.yml` in the working directory, in version 2.x of the SV-COMP witness format.
+
+With `--bug-finding-fallback`, when jlisa ends with UNKNOWN or fails, the bug-finding mode of JLiSA-Wit looks for inputs that violate the property, running the program, for `--bug-finding-time-limit` seconds (default 120). A violation found gives FALSE, with its witness in `witness.yml`; otherwise the verdict stays UNKNOWN (it is never TRUE):
+
+```bash
+> ./jlisa check --bug-finding-fallback --property "<property-file.prp>" <input-dir-1> <...> <input-dir-N>
+```
 
 #### Validating a violation witness
 

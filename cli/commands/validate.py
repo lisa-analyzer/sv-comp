@@ -12,7 +12,7 @@ import typer
 
 # Project-local imports
 from cli.models.config import Config
-from cli.utils.jlisa_wit import run_jlisa_wit
+from cli.utils.jlisa import run_jlisa_wit
 
 # CLI setup
 cli = typer.Typer()
@@ -46,8 +46,8 @@ def validate(
     Validate a violation witness against the input files and a specified property
     """
 
-    if not config.has_jlisa_wit():
-        print("jlisa-wit not included in this build", file=sys.stderr)
+    if not config.has_jlisa():
+        print("jlisa not included in this build", file=sys.stderr)
         print("UNKNOWN")
         raise typer.Exit(code=1)
 

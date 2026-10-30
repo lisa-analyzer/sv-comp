@@ -24,14 +24,12 @@ def version():
         Shows a version of the LiSA's instance in use
     """
 
-    if not config.has_jlisa() and not config.has_jlisa_wit():
+    if not config.has_jlisa():
         typer.echo("Configuration is empty. "
                    "Run [bold]setup[/bold] first and make sure that LiSA instance is specified!")
         raise typer.Exit()
 
-    # always the version of jlisa: the libraries of jlisa-wit include it too
-    classpath = config.path_to_lisa_instance if config.has_jlisa() else config.path_to_jlisa_wit_instance
-    command = f"java -cp {classpath} it.unive.jlisa.Main -v"
+    command = f"java -cp {config.path_to_lisa_instance} it.unive.jlisa.Main -v"
 
     try:
         result = subprocess.run(command, shell=True, check=True, capture_output=True, text=True)

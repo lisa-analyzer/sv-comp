@@ -27,11 +27,12 @@ expect() {
   fi
 }
 
-# check PROPERTY EXPECTED INPUT...
+# check PROPERTY EXPECTED INPUT... (with the options of check in CHECK_OPTIONS)
 check() {
   local property="$1" expected="$2"
   shift 2
-  expect "check $property $*" "$($JLISA check --property "$TEST/$property" "$@" | tail -n 1)" "$expected"
+  expect "check ${CHECK_OPTIONS:-}${CHECK_OPTIONS:+ }$property $*" \
+    "$($JLISA check ${CHECK_OPTIONS:-} --property "$TEST/$property" "$@" | tail -n 1)" "$expected"
 }
 
 # validate WITNESS PROPERTY PROGRAM EXPECTED
@@ -46,14 +47,12 @@ if grep -qx jlisa <<< "$components"; then
   check valid-assert.prp TRUE "$TEST/01/Main.java"
   check valid-assert.prp TRUE "$TEST/02/Main.java"
   rm -f witness.yml
-  if grep -qx find-bug <<< "$components"; then
-    # jlisa cannot tell, the bug-finding mode of jlisa-wit finds the violation and writes its witness
+  # jlisa cannot tell; with the bug-finding fallback, jlisa-wit finds the violation and writes its witness
+  check valid-assert.prp UNKNOWN "$TEST/common/" "$TEST/nondet-assert/"
+  CHECK_OPTIONS="--bug-finding-fallback --bug-finding-time-limit 30" \
     check valid-assert.prp FALSE "$TEST/common/" "$TEST/nondet-assert/"
-    expect "violation witness of check valid-assert.prp $TEST/common/ $TEST/nondet-assert/" \
-      "$([ -f witness.yml ] && echo written || echo missing)" written
-  else
-    check valid-assert.prp UNKNOWN "$TEST/common/" "$TEST/nondet-assert/"
-  fi
+  expect "violation witness of check --bug-finding-fallback valid-assert.prp $TEST/common/ $TEST/nondet-assert/" \
+    "$([ -f witness.yml ] && echo written || echo missing)" written
   rm -f witness.yml
   check valid-assert.prp FALSE "$TEST/03/Main.java"
   expect "violation witness of check valid-assert.prp $TEST/03/Main.java" \
