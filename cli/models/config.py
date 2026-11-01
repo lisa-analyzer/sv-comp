@@ -32,8 +32,6 @@ class Config:
     path_to_output_dir: Optional[Path] = None
     # the numerical domain of jlisa (option -n)
     numerical_domain: str = "ConstantPropagation"
-    # whether jlisa writes the JSON graphs of the analyzed methods (off: option --no-graphs)
-    jlisa_graphs: bool = True
 
     @classmethod
     def get(cls) -> 'Config':
@@ -56,8 +54,7 @@ class Config:
             path_to_sv_comp_benchmark_dir=Path(bench_dir) if bench_dir else None,
             path_to_lisa_instance=Path(lisa_inst) if lisa_inst else None,
             path_to_output_dir=Path(out_dir) if out_dir else None,
-            numerical_domain=config_dict.get('numerical_domain', "ConstantPropagation"),
-            jlisa_graphs=config_dict.get('jlisa_graphs', True)
+            numerical_domain=config_dict.get('numerical_domain', "ConstantPropagation")
         )
 
     @staticmethod

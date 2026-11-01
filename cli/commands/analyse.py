@@ -48,6 +48,7 @@ class WorkerTask:
         task_idx: int,
         lock: Lock,
         bug_finding_time_limit: int | None,
+        dump_graphs: bool,
     ):
         self.task = task
         self.start_time = start_time
@@ -59,6 +60,7 @@ class WorkerTask:
         self.lock = lock
         # the time of the search of the bug-finding fallback, or None without it
         self.bug_finding_time_limit = bug_finding_time_limit
+        self.dump_graphs = dump_graphs
 
 
 @cli.command()
@@ -114,6 +116,10 @@ def analyse(
         int,
         typer.Option("--bug-finding-time-limit", help="Time of the search of the bug-finding fallback, in seconds"),
     ] = BUG_FINDING_TIME_LIMIT,
+    dump_graphs: Annotated[
+        bool,
+        typer.Option("--dump-graphs", help="Let jlisa also write the JSON graphs of the analyzed methods"),
+    ] = False,
 ):
     """
     Sends collected tasks to the LiSA instance for analysis
@@ -149,7 +155,7 @@ def analyse(
         for task in tasks:
             tsk = WorkerTask(
                 task, start_time, timeout, max_memory, timed_out, total_tasks, i, lock,
-                bug_finding_time_limit if bug_finding_fallback else None
+                bug_finding_time_limit if bug_finding_fallback else None, dump_graphs
             )
             i += 1
             executor.submit(__perform_analysis, tsk)
@@ -171,7 +177,7 @@ def __perform_analysis(task: WorkerTask):
     # the input files of a harvested task are saved as one string, separated by spaces
     command = get_lisa_cmd(
         config, str(task.task.input_file).split(), f"results/{task.task.file_name}", task.max_memory,
-        debug=True, property_files=property_files(task.task)
+        debug=True, property_files=property_files(task.task), dump_graphs=task.dump_graphs
     )
 
     rich.print(
