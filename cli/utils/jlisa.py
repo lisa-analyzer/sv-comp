@@ -41,18 +41,19 @@ def property_files(task: TaskDefinition) -> list[str]:
 
 def get_lisa_cmd(
     config: Config, input_files: list[str], file_name: str, max_memory: int, debug: bool = False,
-    property_files: list[str] | None = None
+    property_files: list[str] | None = None, dump_graphs: bool = False
 ) -> list[str]:
     """
     Get the command to run LiSA from the configuration file, as a list of arguments. With debug, jlisa
     also writes the debug information (open calls, bottom states) and the exceptions that the statistics use.
+    With dump_graphs, jlisa also writes the JSON graphs of the analyzed methods.
     For each property file, jlisa also writes the violation witness of a definite violation of that property,
     to witness/<property>/witness.yml in the output directory.
 
     The command is:
         java -Xmx<max_memory>G -cp <path_to_lisa_instance> it.unive.jlisa.Main
             -s <input-1> <...> <input-N> -o <output-dir>
-            -n <numerical_domain> -m Statistics -c Assert --no-html --l ERROR [-d -e] [--no-graphs]
+            -n <numerical_domain> -m Statistics -c Assert --l ERROR [-d -e] [--dump-graphs]
             [--svcomp-property <property-file-1> <...> --svcomp-property <property-file-N>]
     """
     out = (
@@ -72,9 +73,8 @@ def get_lisa_cmd(
         "-n", config.numerical_domain,
         "-m", "Statistics",
         "-c", "Assert",
-        "--no-html",
         "--l", "ERROR",
-    ] + (["-d", "-e"] if debug else []) + ([] if config.jlisa_graphs else ["--no-graphs"]) + [
+    ] + (["-d", "-e"] if debug else []) + (["--dump-graphs"] if dump_graphs else []) + [
         arg for property_file in (property_files or []) for arg in ("--svcomp-property", property_file)
     ]
 

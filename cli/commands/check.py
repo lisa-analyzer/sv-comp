@@ -49,7 +49,11 @@ def check(
         bug_finding_time_limit: int = typer.Option(
             BUG_FINDING_TIME_LIMIT,
             "--bug-finding-time-limit",
-            help="Time of the search of the bug-finding fallback, in seconds")):
+            help="Time of the search of the bug-finding fallback, in seconds"),
+        dump_graphs: bool = typer.Option(
+            False,
+            "--dump-graphs",
+            help="Let jlisa also write the JSON graphs of the analyzed methods")):
     """
     Check input files against a specified property
     """
@@ -68,7 +72,7 @@ def check(
     property_file = property if Path(property).is_file() else None
     if property_file is None:
         print(f"jlisa: {property} is not a property file, no violation witness is written", file=sys.stderr)
-    lisa_report = __run_analysis(inputs, property_file)
+    lisa_report = __run_analysis(inputs, property_file, dump_graphs)
 
     # the time of the search of the bug-finding fallback, or None without it
     time_limit = bug_finding_time_limit if bug_finding_fallback else None
@@ -126,8 +130,9 @@ def __validate_input_paths(inputs: list[str]) -> list[Path]:
 
     return paths
 
-def __run_analysis(inputs: list[str], property_file: str | None) -> LisaReport | None:
-    command = get_lisa_cmd(config, inputs, None, 10, property_files=[property_file] if property_file else None)
+def __run_analysis(inputs: list[str], property_file: str | None, dump_graphs: bool) -> LisaReport | None:
+    command = get_lisa_cmd(config, inputs, None, 10, property_files=[property_file] if property_file else None,
+                           dump_graphs=dump_graphs)
 
     proc = subprocess.Popen(
         command,

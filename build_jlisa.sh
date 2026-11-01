@@ -83,8 +83,7 @@ unzip -o "$JLISA_ZIP" -d "$SV_COMP_DIR/"
 
 INCLUDE_ITEMS+=("$JLISA_BIN_DIR:$JLISA_BIN_DIR")
 CONFIG_ENTRIES="
-    \"path_to_lisa_instance\": \"\\\"${JLISA_BIN_DIR}/lib/*\\\"\",
-    \"jlisa_graphs\": false,"
+    \"path_to_lisa_instance\": \"\\\"${JLISA_BIN_DIR}/lib/*\\\"\","
 
 CONFIG_JSON="$SV_COMP_DIR/config.json"
 
