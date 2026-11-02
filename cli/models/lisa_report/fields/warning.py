@@ -6,8 +6,9 @@ ASSERTION_MESSAGE = "the assertion might not hold"
 RUNTIME_MESSAGE = "uncaught runtime exception in main method"
 
 # The reasons why the verification of a warning can leave it possible, as the text of the explanations of the
-# verifiers of LiSA identifies them. An explanation (one per line, when several analysis results were verified) can
-# give more than one reason (e.g., a counterexample that both starts in a callee and relies on imprecise values).
+# verifiers of LiSA identifies them. An explanation (that may span several lines, e.g., when several analysis results
+# were verified, or when a counterexample contains strings with newlines) can give more than one reason (e.g., a
+# counterexample that both starts in a callee and relies on imprecise values).
 POSSIBLE_REASONS = [
     ("not verified: the verification stopped at the first confirmed warning", "not verified (stopped at the first confirmed warning)"),
     ("from states that are not the initial ones of the program", "counterexample from a callee context"),
@@ -24,6 +25,10 @@ POSSIBLE_REASONS = [
 ]
 # The reason of a possible warning whose verification gave no explanation
 UNEXPLAINED = "unexplained"
+# The reason of a possible warning whose explanation gives no known reason, followed by the start of the explanation
+OTHER = "other"
+# How many characters of an explanation with no known reason are kept
+OTHER_LENGTH = 60
 
 
 @dataclass
@@ -96,14 +101,15 @@ class Warning:
     def possible_reasons(self) -> set[str]:
         """
         Why the verification left the warning possible, as POSSIBLE_REASONS (UNEXPLAINED without an explanation;
-        a line of the explanation itself when no known reason matches it). Empty if the warning is not possible.
+        OTHER followed by the start of the explanation, on a single line and without separators, when no known
+        reason matches it). Empty if the warning is not possible.
         """
         if not self.is_possible():
             return set()
         if not self.explanation:
             return {UNEXPLAINED}
-        reasons = set()
-        for line in self.explanation.splitlines():
-            matched = {reason for text, reason in POSSIBLE_REASONS if text in line}
-            reasons |= matched if matched else {line.strip()}
-        return reasons
+        reasons = {reason for text, reason in POSSIBLE_REASONS if text in self.explanation}
+        if reasons:
+            return reasons
+        start = " ".join(self.explanation.split())[:OTHER_LENGTH].replace(";", ",").replace(": ", " ")
+        return {f"{OTHER} ({start})"}
