@@ -1,4 +1,5 @@
 # Standard library imports
+import re
 from dataclasses import dataclass, field
 
 # The messages of the warnings issued by the assert checker of jlisa, one for each property
@@ -23,6 +24,11 @@ POSSIBLE_REASONS = [
     ("no analysis result for the context of the warning", "no analysis result"),
     ("the warning reports no violation to verify", "no violation to verify"),
 ]
+# The explanation of a counterexample relying on imprecise values lists the kinds of imprecision between parentheses,
+# separated by commas (e.g., "relying on values that are not computed precisely (call results, heap values): ..."):
+# each kind is a reason of its own
+IMPRECISE_KINDS = re.compile(r"relying on values that are not computed precisely \(([^)]*)\)")
+IMPRECISE_PREFIX = "imprecise values: "
 # The reason of a possible warning whose verification gave no explanation
 UNEXPLAINED = "unexplained"
 # The reason of a possible warning whose explanation gives no known reason, followed by the start of the explanation
@@ -100,7 +106,8 @@ class Warning:
 
     def possible_reasons(self) -> set[str]:
         """
-        Why the verification left the warning possible, as POSSIBLE_REASONS (UNEXPLAINED without an explanation;
+        Why the verification left the warning possible, as POSSIBLE_REASONS, where counterexamples relying on imprecise
+        values give one reason for each kind of imprecision they list (UNEXPLAINED without an explanation;
         OTHER followed by the start of the explanation, on a single line and without separators, when no known
         reason matches it). Empty if the warning is not possible.
         """
@@ -109,6 +116,11 @@ class Warning:
         if not self.explanation:
             return {UNEXPLAINED}
         reasons = {reason for text, reason in POSSIBLE_REASONS if text in self.explanation}
+        kinds = {kind.strip() for match in IMPRECISE_KINDS.finditer(self.explanation) for kind in match.group(1).split(",")}
+        if kinds:
+            # the kinds of imprecision replace the generic reason
+            reasons.discard("counterexample relying on imprecise values")
+            reasons |= {IMPRECISE_PREFIX + kind for kind in kinds}
         if reasons:
             return reasons
         start = " ".join(self.explanation.split())[:OTHER_LENGTH].replace(";", ",").replace(": ", " ")
