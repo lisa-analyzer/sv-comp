@@ -1,6 +1,7 @@
 # Standard library imports
 import json
 import os
+from collections import Counter
 
 # Load vendored packages
 from vendor.package_loader import load_packages
@@ -44,6 +45,9 @@ REFUTED_WARNING = "LiSA refuted all its warnings"
 POSSIBLE_WARNING = "LiSA produced POSSIBLE warnings, and no DEFINITE one"
 DEFINITE_WARNING = "LiSA produced DEFINITE warnings"
 NO_WARNINGS = "LiSA produced no warnings"
+
+# The column of the results with the reasons why warnings stayed possible, when the verdict of jlisa is UNKNOWN
+POSSIBLE_COLUMN = "Possible because"
 
 
 @cli.command()
@@ -223,6 +227,13 @@ def __compute_score(results_dir: str, file_name: str) -> DataFrame:
         task, lisa_report
     )
     sv_assert, due_assert, virdict_assert = __score_assertions(task, lisa_report)
+    # why the verification left warnings possible, for UNKNOWN verdicts only
+    possible_runtime = (
+        __format_reasons(lisa_report.count_possible_runtime_reasons()) if virdict_runtime == "UNKNOWN" else ""
+    )
+    possible_assert = (
+        __format_reasons(lisa_report.count_possible_assert_reasons()) if virdict_assert == "UNKNOWN" else ""
+    )
 
     svcomp_data = []
     if task.are_runtime_exceptions_expected() is not None:
@@ -236,6 +247,7 @@ def __compute_score(results_dir: str, file_name: str) -> DataFrame:
                 lisa_report.count_open_call_notices(),
                 __witness(results_dir, Property.RUNTIME),
                 __witness_validation(results_dir, Property.RUNTIME),
+                possible_runtime,
             ]
         )
     if task.are_assertions_expected() is not None:
@@ -249,6 +261,7 @@ def __compute_score(results_dir: str, file_name: str) -> DataFrame:
                 lisa_report.count_open_call_notices(),
                 __witness(results_dir, Property.ASSERT),
                 __witness_validation(results_dir, Property.ASSERT),
+                possible_assert,
             ]
         )
 
@@ -263,6 +276,7 @@ def __compute_score(results_dir: str, file_name: str) -> DataFrame:
             "Num Open Calls",
             "Witness",
             "Witness validation",
+            POSSIBLE_COLUMN,
         ],
     )
 
@@ -271,6 +285,38 @@ def __compute_score(results_dir: str, file_name: str) -> DataFrame:
         lisa_report.get_bottom_notices(),
         lisa_report.get_open_call_notices(),
     )
+
+
+def __format_reasons(reasons) -> str:
+    """
+    The reasons why warnings stayed possible, with how many warnings each, as "reason: N; reason: M" (the
+    format that __possible_reasons_lines reads back).
+    """
+    return "; ".join(f"{reason}: {count}" for reason, count in sorted(reasons.items(), key=lambda r: (-r[1], r[0])))
+
+
+def __possible_reasons_lines(scores: DataFrame) -> list[str]:
+    """
+    The lines of the summary with the reasons why the verification left warnings possible, over the results of
+    jlisa that are UNKNOWN: for each reason, how many results and warnings it affects.
+    """
+    if POSSIBLE_COLUMN not in scores:
+        return []
+    results = Counter()
+    warnings = Counter()
+    for cell in scores[POSSIBLE_COLUMN].fillna(""):
+        for entry in filter(None, cell.split("; ")):
+            reason, _, count = entry.rpartition(": ")
+            results[reason] += 1
+            warnings[reason] += int(count)
+    if not results:
+        return []
+    lines = [
+        f"{reason}: [bold blue]{results[reason]}[/bold blue] results, [bold blue]{warnings[reason]}[/bold blue] warnings"
+        for reason in sorted(results, key=lambda r: (-results[r], r))
+    ]
+    lines[-1] += "\n"
+    return ["[italic]Why warnings stayed possible (UNKNOWN results of jlisa)[/italic]", *lines]
 
 
 def __witness(results_dir: str, property: Property) -> str:
@@ -476,6 +522,7 @@ def __save_summary(
         *results_lines,
         "[italic]Violation witnesses[/italic]",
         *witness_lines,
+        *__possible_reasons_lines(scores),
         "[red bold]Errors[/red bold] (check corresponding .csv files)",
         f"Parsing: [bold red]{parsing_error_counter}[/bold red]",
         f"Frontend: [bold red]{frontend_error_counter}[/bold red]",

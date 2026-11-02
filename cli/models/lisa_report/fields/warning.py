@@ -5,6 +5,26 @@ from dataclasses import dataclass, field
 ASSERTION_MESSAGE = "the assertion might not hold"
 RUNTIME_MESSAGE = "uncaught runtime exception in main method"
 
+# The reasons why the verification of a warning can leave it possible, as the text of the explanations of the
+# verifiers of LiSA identifies them. An explanation (one per line, when several analysis results were verified) can
+# give more than one reason (e.g., a counterexample that both starts in a callee and relies on imprecise values).
+POSSIBLE_REASONS = [
+    ("not verified: the verification stopped at the first confirmed warning", "not verified (stopped at the first confirmed warning)"),
+    ("from states that are not the initial ones of the program", "counterexample from a callee context"),
+    ("relying on values that are not computed precisely", "counterexample relying on imprecise values"),
+    ("budget exhausted", "budget exhausted"),
+    ("but no inductive invariant found", "bound reached, no inductive invariant"),
+    ("no violation found within", "bound reached"),
+    ("no SMT solver available", "no SMT solver"),
+    ("the solver could not decide", "solver could not decide"),
+    ("the solver failed", "solver failure"),
+    ("the verification failed", "verification failure"),
+    ("no analysis result for the context of the warning", "no analysis result"),
+    ("the warning reports no violation to verify", "no violation to verify"),
+]
+# The reason of a possible warning whose verification gave no explanation
+UNEXPLAINED = "unexplained"
+
 
 @dataclass
 class ReproducingInput:
@@ -43,9 +63,11 @@ class Warning:
     definite: bool = False
     refuted: bool = False
     reproducing_inputs: list[ReproducingInput] = field(default_factory=list)
+    # why the verification confirmed, refuted, or left possible the warning, if known
+    explanation: str | None = None
 
     def __init__(self, message, location=None, cfg=None, text=None, context=None, targetKind=None,
-                 definite=False, refuted=False, reproducingInputs=(), **_):
+                 definite=False, refuted=False, reproducingInputs=(), explanation=None, **_):
         self.message = message
         self.location = location
         self.cfg = cfg
@@ -57,6 +79,7 @@ class Warning:
         self.reproducing_inputs = [
             ReproducingInput(**i) if isinstance(i, dict) else i for i in (reproducingInputs or ())
         ]
+        self.explanation = explanation
 
     def is_assertion_warning(self) -> bool:
         return self.message == ASSERTION_MESSAGE
@@ -69,3 +92,18 @@ class Warning:
         Whether the warning has been neither confirmed nor refuted
         """
         return not self.definite and not self.refuted
+
+    def possible_reasons(self) -> set[str]:
+        """
+        Why the verification left the warning possible, as POSSIBLE_REASONS (UNEXPLAINED without an explanation;
+        a line of the explanation itself when no known reason matches it). Empty if the warning is not possible.
+        """
+        if not self.is_possible():
+            return set()
+        if not self.explanation:
+            return {UNEXPLAINED}
+        reasons = set()
+        for line in self.explanation.splitlines():
+            matched = {reason for text, reason in POSSIBLE_REASONS if text in line}
+            reasons |= matched if matched else {line.strip()}
+        return reasons

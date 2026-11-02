@@ -1,4 +1,5 @@
 # Standard library imports
+from collections import Counter
 from dataclasses import dataclass
 
 # Project-local imports
@@ -52,6 +53,12 @@ class LisaReport:
     def has_only_refuted_assert_warnings(self) -> bool:
         return all(w.refuted for w in self.list_assert_warnings())
 
+    def count_possible_assert_reasons(self) -> Counter:
+        """
+        How many possible assertion warnings the verification left possible for each reason
+        """
+        return self.__count_possible_reasons(self.list_assert_warnings())
+
     # runtime specific
 
     def list_runtime_warnings(self) -> list[Warning]:
@@ -68,6 +75,19 @@ class LisaReport:
 
     def has_only_refuted_runtime_warnings(self) -> bool:
         return all(w.refuted for w in self.list_runtime_warnings())
+
+    def count_possible_runtime_reasons(self) -> Counter:
+        """
+        How many possible runtime exception warnings the verification left possible for each reason
+        """
+        return self.__count_possible_reasons(self.list_runtime_warnings())
+
+    @staticmethod
+    def __count_possible_reasons(warnings: list[Warning]) -> Counter:
+        reasons = Counter()
+        for w in warnings:
+            reasons.update(w.possible_reasons())
+        return reasons
 
     # notice specific
 
