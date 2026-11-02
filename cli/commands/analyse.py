@@ -49,6 +49,7 @@ class WorkerTask:
         lock: Lock,
         bug_finding_time_limit: int | None,
         dump_graphs: bool,
+        z3: str | None,
     ):
         self.task = task
         self.start_time = start_time
@@ -61,6 +62,8 @@ class WorkerTask:
         # the time of the search of the bug-finding fallback, or None without it
         self.bug_finding_time_limit = bug_finding_time_limit
         self.dump_graphs = dump_graphs
+        # the z3 executable that jlisa uses to verify its warnings, or None for the one in the PATH
+        self.z3 = z3
 
 
 @cli.command()
@@ -120,6 +123,11 @@ def analyse(
         bool,
         typer.Option("--dump-graphs", help="Let jlisa also write the JSON graphs of the analyzed methods"),
     ] = False,
+    z3: Annotated[
+        Optional[str],
+        typer.Option("--z3", help="Path to the z3 executable that jlisa uses to verify its warnings "
+                                  "(by default, the one in the PATH)"),
+    ] = None,
 ):
     """
     Sends collected tasks to the LiSA instance for analysis
@@ -155,7 +163,7 @@ def analyse(
         for task in tasks:
             tsk = WorkerTask(
                 task, start_time, timeout, max_memory, timed_out, total_tasks, i, lock,
-                bug_finding_time_limit if bug_finding_fallback else None, dump_graphs
+                bug_finding_time_limit if bug_finding_fallback else None, dump_graphs, z3
             )
             i += 1
             executor.submit(__perform_analysis, tsk)
@@ -177,7 +185,7 @@ def __perform_analysis(task: WorkerTask):
     # the input files of a harvested task are saved as one string, separated by spaces
     command = get_lisa_cmd(
         config, str(task.task.input_file).split(), f"results/{task.task.file_name}", task.max_memory,
-        debug=True, property_files=property_files(task.task), dump_graphs=task.dump_graphs
+        debug=True, property_files=property_files(task.task), dump_graphs=task.dump_graphs, z3=task.z3
     )
 
     rich.print(

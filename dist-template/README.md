@@ -6,6 +6,8 @@ This archive contains the SV-COMP executable of JLiSA, the Java frontend of [LiS
 
 `./jlisa components` lists the tools included in this archive, one per line.
 
+The archive also includes the [z3](https://github.com/Z3Prover/z3) SMT solver (`z3/z3`, with its license in `z3/LICENSE.txt`), that JLiSA uses to verify its warnings, confirming or refuting them.
+
 #### Requirements
 - Java 21 or higher, available as `java` (or through the JAVA_HOME environment variable)
 
@@ -16,6 +18,8 @@ This archive contains the SV-COMP executable of JLiSA, the Java frontend of [LiS
 ```
 
 The last line of the output is the verdict: TRUE (the property holds), FALSE (the property is violated) or UNKNOWN. The results of the analysis are written to the folder `outputs/` in the working directory. When the verdict is FALSE because jlisa proves the violation, the violation witness is written to `witness.yml` in the working directory, in version 2.x of the SV-COMP witness format.
+
+JLiSA uses the z3 executable included in the archive; `--z3 <path>` uses another one instead.
 
 With `--bug-finding-fallback`, when jlisa ends with UNKNOWN or fails, the bug-finding mode of JLiSA-Wit looks for inputs that violate the property, running the program, for `--bug-finding-time-limit` seconds (default 120). A violation found gives FALSE, with its witness in `witness.yml`; otherwise the verdict stays UNKNOWN (it is never TRUE):
 

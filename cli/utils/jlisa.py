@@ -1,10 +1,12 @@
 # Standard library imports
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 # Project-local imports
 from cli.models.config import Config
+from cli.utils.util import resource_path
 from cli.models.property import SVCOMP_NAMES
 from cli.models.task_definition.task_definition import TaskDefinition
 
@@ -25,6 +27,20 @@ ENVIRONMENT_EXCEPTIONS = {
 }
 
 
+# The folder with the z3 executable that build_jlisa.sh downloads and ships next to the jlisa executable
+Z3_DIR = "z3"
+
+
+def bundled_z3() -> str | None:
+    """
+    The path to the z3 executable shipped with the archive (z3/z3, next to the jlisa executable, or in the
+    project folder when running from the sources), or None if there is none.
+    """
+    base = Path(sys.executable).parent if getattr(sys, "frozen", False) else resource_path(".")
+    z3 = base / Z3_DIR / "z3"
+    return str(z3.absolute()) if z3.is_file() else None
+
+
 def property_files(task: TaskDefinition) -> list[str]:
     """
     The property files of the task that jlisa checks and writes violation witnesses for (valid-assert and
@@ -41,19 +57,20 @@ def property_files(task: TaskDefinition) -> list[str]:
 
 def get_lisa_cmd(
     config: Config, input_files: list[str], file_name: str, max_memory: int, debug: bool = False,
-    property_files: list[str] | None = None, dump_graphs: bool = False
+    property_files: list[str] | None = None, dump_graphs: bool = False, z3: str | None = None
 ) -> list[str]:
     """
     Get the command to run LiSA from the configuration file, as a list of arguments. With debug, jlisa
     also writes the debug information (open calls, bottom states) and the exceptions that the statistics use.
     With dump_graphs, jlisa also writes the JSON graphs of the analyzed methods.
+    With z3, jlisa uses that z3 executable to verify its warnings (otherwise, the one in the PATH, if any).
     For each property file, jlisa also writes the violation witness of a definite violation of that property,
     to witness/<property>/witness.yml in the output directory.
 
     The command is:
         java -Xmx<max_memory>G -cp <path_to_lisa_instance> it.unive.jlisa.Main
             -s <input-1> <...> <input-N> -o <output-dir>
-            -n <numerical_domain> -m Statistics -c Assert --l ERROR [-d -e] [--dump-graphs]
+            -n <numerical_domain> -m Statistics -c Assert --l ERROR [-d -e] [--dump-graphs] [--z3 <z3>]
             [--svcomp-property <property-file-1> <...> --svcomp-property <property-file-N>]
     """
     out = (
@@ -74,7 +91,9 @@ def get_lisa_cmd(
         "-m", "Statistics",
         "-c", "Assert",
         "--l", "ERROR",
-    ] + (["-d", "-e"] if debug else []) + (["--dump-graphs"] if dump_graphs else []) + [
+    ] + (["-d", "-e"] if debug else []) + (["--dump-graphs"] if dump_graphs else []) + (
+        ["--z3", z3] if z3 else []
+    ) + [
         arg for property_file in (property_files or []) for arg in ("--svcomp-property", property_file)
     ]
 

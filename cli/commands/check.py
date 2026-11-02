@@ -19,7 +19,7 @@ from cli.models.config import Config
 from cli.models.property import Property, SVCOMP_NAMES
 from cli.models.lisa_report.lisa_report import LisaReport
 from cli.utils.util import classify_asserts, AssertClassification, classify_runtime, RuntimeClassification
-from cli.utils.jlisa import BUG_FINDING_TIME_LIMIT, find_bug, get_lisa_cmd
+from cli.utils.jlisa import BUG_FINDING_TIME_LIMIT, bundled_z3, find_bug, get_lisa_cmd
 
 # CLI setup
 cli = typer.Typer()
@@ -53,7 +53,12 @@ def check(
         dump_graphs: bool = typer.Option(
             False,
             "--dump-graphs",
-            help="Let jlisa also write the JSON graphs of the analyzed methods")):
+            help="Let jlisa also write the JSON graphs of the analyzed methods"),
+        z3: str | None = typer.Option(
+            None,
+            "--z3",
+            help="Path to the z3 executable that jlisa uses to verify its warnings (by default, the one shipped "
+                 "with the archive, if any, otherwise the one in the PATH)")):
     """
     Check input files against a specified property
     """
@@ -72,7 +77,7 @@ def check(
     property_file = property if Path(property).is_file() else None
     if property_file is None:
         print(f"jlisa: {property} is not a property file, no violation witness is written", file=sys.stderr)
-    lisa_report = __run_analysis(inputs, property_file, dump_graphs)
+    lisa_report = __run_analysis(inputs, property_file, dump_graphs, z3 or bundled_z3())
 
     # the time of the search of the bug-finding fallback, or None without it
     time_limit = bug_finding_time_limit if bug_finding_fallback else None
@@ -130,9 +135,10 @@ def __validate_input_paths(inputs: list[str]) -> list[Path]:
 
     return paths
 
-def __run_analysis(inputs: list[str], property_file: str | None, dump_graphs: bool) -> LisaReport | None:
+def __run_analysis(inputs: list[str], property_file: str | None, dump_graphs: bool,
+                   z3: str | None) -> LisaReport | None:
     command = get_lisa_cmd(config, inputs, None, 10, property_files=[property_file] if property_file else None,
-                           dump_graphs=dump_graphs)
+                           dump_graphs=dump_graphs, z3=z3)
 
     proc = subprocess.Popen(
         command,

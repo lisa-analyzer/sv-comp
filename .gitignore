@@ -27,3 +27,6 @@ comparison.csv
 /jlisa.zip
 /jlisa.spec
 /tmp_test_*
+
+# z3, downloaded by build_jlisa.sh
+/z3

@@ -177,7 +177,7 @@ gpr.key=github-access-token
 > ./build_jlisa.sh --jlisa-dir ../jlisa/jlisa
 ```
 
-This script will generate a jlisa.zip file. The zip contains the executable along with the license, README, and smoketest script. The script runs the smoketest on the unzipped archive at the end of the build.
+This script will generate a jlisa.zip file. The zip contains the executable along with the license, README, and smoketest script, and the z3 SMT solver that JLiSA uses to verify its warnings (`z3/z3`). The script downloads the z3 release set at its top (`Z3_VERSION`, the same as in the GitHub actions of LiSA) into `z3/`, checking its checksum, and reuses it in later builds. The script runs the smoketest on the unzipped archive at the end of the build.
 To run the smoketest on the sources instead, without building:
 ```bash
 > JLISA="python3 main.py" bash dist-template/smoketest.sh
@@ -190,7 +190,7 @@ To verify a program:
 ```bash
 > ./jlisa check --property "<property-file.prp>" <input-1> <...> <input-N>
 ```
-The last line of the output is the verdict: TRUE (the property holds), FALSE (the property is violated) or UNKNOWN. The results of the analysis are written to the folder `outputs/` in the working directory. When the verdict is FALSE because jlisa proves the violation, the violation witness is written to `witness.yml` in the working directory, in version 2.x of the SV-COMP witness format. This needs a version of JLiSA with the option `--svcomp-property`, which writes the witness of each property to `outputs/witness/<property>/witness.yml`.
+The last line of the output is the verdict: TRUE (the property holds), FALSE (the property is violated) or UNKNOWN. JLiSA issues a possible warning for each assertion (or uncaught runtime exception) that its analysis cannot rule out, and then verifies the warnings, confirming (definite) or refuting them: the verdict is TRUE if there are no warnings or all of them are refuted, FALSE if one is confirmed, and UNKNOWN otherwise. Verification uses z3: `check` passes to JLiSA the z3 executable included in the archive (or `z3/z3` in the project folder, when running from the sources), and `--z3 <path>` uses another one; `analyse` uses z3 from the PATH, or the one given with `--z3 <path>`. The results of the analysis are written to the folder `outputs/` in the working directory. When the verdict is FALSE because jlisa proves the violation, the violation witness is written to `witness.yml` in the working directory, in version 2.x of the SV-COMP witness format. This needs a version of JLiSA with the option `--svcomp-property`, which writes the witness of each property to `outputs/witness/<property>/witness.yml`.
 
 To validate a violation witness:
 ```bash

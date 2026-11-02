@@ -40,20 +40,9 @@ ASSERTIONS_FALSE = "Assertions set to FALSE"
 RUNTIME_TRUE = "Runtime exceptions set to TRUE"
 RUNTIME_FALSE = "Runtime exceptions set to FALSE"
 
-DEFINITE_WARNING = "LiSA produced only DEFINITE HOLDS warnings"
-DEFINITE_NOT_WARNING = "LiSA produced only DEFINITE NOT holds warnings"
-POSSIBLE_NOT_WARNING = "LiSA produced only POSSIBLY NOT holds warnings"
-CONFLICT_NOT_WARNING = (
-    "LiSA produced both DEFINITE and POSSIBLE 'does not hold' warnings"
-)
-CONFLICT_HOLDS_AND_NOT_WARNING = (
-    "LiSA produced both DEFINITE 'holds' and 'does not hold' warnings"
-)
-CONFLICT_HOLDS_AND_POSSIBLY_NOT_WARNING = (
-    "LiSA produced both DEFINITE 'holds' and POSSIBLE 'does not hold' warnings"
-)
-CONFLICT_ALL_WARNING = "LiSA produced both DEFINITE 'holds' and 'does not hold', and POSSIBLE 'does not hold' warnings"
-UNKNOWN_WARNING = "LiSA classification unknown"
+REFUTED_WARNING = "LiSA refuted all its warnings"
+POSSIBLE_WARNING = "LiSA produced POSSIBLE warnings, and no DEFINITE one"
+DEFINITE_WARNING = "LiSA produced DEFINITE warnings"
 NO_WARNINGS = "LiSA produced no warnings"
 
 
@@ -129,9 +118,9 @@ def statistics():
         if not treated and dir_name not in timed_out_tasks:
             svcomp_iteration_df, bottoms, opens = __compute_score(results_dir, dir_name)
             for notice in bottoms:
-                all_bottoms.append((dir_name, notice.message))
+                all_bottoms.append((dir_name, notice.describe()))
             for notice in opens:
-                all_opens.append((dir_name, notice.message))
+                all_opens.append((dir_name, notice.describe()))
             svcomp_scores = svcomp_scores._append(svcomp_iteration_df)
 
     for t in timed_out_tasks:
@@ -334,24 +323,12 @@ def __score_assertions(
     match classification:
         case AssertClassification.NO_WARNINGS:
             due_to.append(f"{expected_res}, and {NO_WARNINGS}")
-        case AssertClassification.ONLY_DEFINITE_HOLDS:
+        case AssertClassification.ONLY_REFUTED:
+            due_to.append(f"{expected_res}, and {REFUTED_WARNING}")
+        case AssertClassification.POSSIBLE:
+            due_to.append(f"{expected_res}, and {POSSIBLE_WARNING}")
+        case AssertClassification.DEFINITE:
             due_to.append(f"{expected_res}, and {DEFINITE_WARNING}")
-        case AssertClassification.ONLY_POSSIBLE_NOT_HOLDS:
-            due_to.append(f"{expected_res}, and {POSSIBLE_NOT_WARNING}")
-        case AssertClassification.ONLY_DEFINITE_NOT_HOLDS:
-            due_to.append(f"{expected_res}, and {DEFINITE_NOT_WARNING}")
-        case AssertClassification.CONFLICTING_NOT_HOLDS:
-            due_to.append(f"{expected_res}, and {CONFLICT_NOT_WARNING}")
-        case AssertClassification.CONFLICTING_HOLDS_AND_NOT_HOLDS:
-            due_to.append(f"{expected_res}, and {CONFLICT_HOLDS_AND_NOT_WARNING}")
-        case AssertClassification.CONFLICTING_HOLDS_AND_POSSIBLY_NOT_HOLDS:
-            due_to.append(
-                f"{expected_res}, and {CONFLICT_HOLDS_AND_POSSIBLY_NOT_WARNING}"
-            )
-        case AssertClassification.ALL:
-            due_to.append(f"{expected_res}, and {CONFLICT_ALL_WARNING}")
-        case AssertClassification.UNKNOWN:
-            due_to.append(f"{expected_res}, and {UNKNOWN_WARNING}")
 
     return sv_comp_score, due_to, virdict
 
@@ -389,14 +366,12 @@ def __score_runtime_exceptions(
     match classification:
         case RuntimeClassification.NO_WARNINGS:
             due_to.append(f"{expected_res}, and {NO_WARNINGS}")
-        case RuntimeClassification.ONLY_POSSIBLE_NOT_HOLDS:
-            due_to.append(f"{expected_res}, and {POSSIBLE_NOT_WARNING}")
-        case RuntimeClassification.ONLY_DEFINITE_NOT_HOLDS:
-            due_to.append(f"{expected_res}, and {DEFINITE_NOT_WARNING}")
-        case RuntimeClassification.CONFLICTING_NOT_HOLDS:
-            due_to.append(f"{expected_res}, and {CONFLICT_NOT_WARNING}")
-        case RuntimeClassification.UNKNOWN:
-            due_to.append(f"{expected_res}, and {UNKNOWN_WARNING}")
+        case RuntimeClassification.ONLY_REFUTED:
+            due_to.append(f"{expected_res}, and {REFUTED_WARNING}")
+        case RuntimeClassification.POSSIBLE:
+            due_to.append(f"{expected_res}, and {POSSIBLE_WARNING}")
+        case RuntimeClassification.DEFINITE:
+            due_to.append(f"{expected_res}, and {DEFINITE_WARNING}")
 
     return sv_comp_score, due_to, virdict
 

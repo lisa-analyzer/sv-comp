@@ -44,6 +44,10 @@ validate() {
 }
 
 if grep -qx jlisa <<< "$components"; then
+  # the z3 executable used to verify the warnings, shipped with the archive
+  if [ "$JLISA" = "$SCRIPT_DIR/jlisa" ]; then
+    expect "z3" "$("$SCRIPT_DIR/z3/z3" --version 2>/dev/null | cut -d' ' -f1-2)" "Z3 version"
+  fi
   check valid-assert.prp TRUE "$TEST/01/Main.java"
   check valid-assert.prp TRUE "$TEST/02/Main.java"
   rm -f witness.yml

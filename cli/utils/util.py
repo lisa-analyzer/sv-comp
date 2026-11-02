@@ -64,86 +64,54 @@ def get_meta_info(field: str):
 
 class AssertClassification(Enum):
     ### FORMAT: (code, sv-comp verdict)
+    # jlisa issues a possible warning for each assertion that the analysis cannot prove, and then verifies
+    # them: a warning is either confirmed (definite), refuted, or left possible
 
-    # no warnings are issued
-    NO_WARNINGS = 1, "TRUE" # was UNKNOWN
+    # no warnings are issued: the analysis proves all assertions
+    NO_WARNINGS = 1, "TRUE"
 
-    # only "assertion definitely holds" warnings are issued
-    ONLY_DEFINITE_HOLDS = 2, "TRUE"
-    
-    # only "assertion possibly does not hold" warnings are issued
-    ONLY_POSSIBLE_NOT_HOLDS = 3, "UNKNOWN"
-    
-    # only "assertion definitely does not hold" warnings are issued
-    ONLY_DEFINITE_NOT_HOLDS = 4, "FALSE" # was UNKNOWN
-    
-    # both "assertion possibly does not hold" 
-    # and "assertion definitely does not hold" warnings are issued,
-    # but no "assertion definitely holds" warning is issued
-    CONFLICTING_NOT_HOLDS = 5, "UNKNOWN"
+    # all warnings are refuted by their verification
+    ONLY_REFUTED = 2, "TRUE"
 
-    # both "assertion definitely holds" 
-    # and "assertion definitely does not hold" warnings are issued,
-    # but no "assertion possibly does not hold" warning is issued
-    CONFLICTING_HOLDS_AND_NOT_HOLDS = 6, "FALSE" # was UNKNOWN
+    # some warnings are possible, and none is definite
+    POSSIBLE = 3, "UNKNOWN"
 
-    # both "assertion definitely holds" 
-    # and "assertion possibly does not hold" warnings are issued,
-    # but no "assertion definitely does not hold" warning is issued
-    CONFLICTING_HOLDS_AND_POSSIBLY_NOT_HOLDS = 7, "UNKNOWN"
+    # some warning is definite: its violation has been confirmed
+    DEFINITE = 4, "FALSE"
 
-    # "assertion definitely holds", 
-    # "assertion definitely does not hold", 
-    # and "assertion possibly does not hold" warnings are issued
-    ALL = 8, "FALSE" # was UNKNOWN
-    
-    # unknown classification
-    UNKNOWN = 9, "UNKNOWN"
 
 def classify_asserts(lisa_report: LisaReport):
     if not lisa_report.has_assert_warnings():
         return AssertClassification.NO_WARNINGS
-    elif lisa_report.has_only_definite_holds_assert_warning():
-        return AssertClassification.ONLY_DEFINITE_HOLDS
-    elif lisa_report.has_only_possibly_not_holds_assert_warning():
-        return AssertClassification.ONLY_POSSIBLE_NOT_HOLDS
-    elif lisa_report.has_only_definite_not_holds_assert_warning():
-        return AssertClassification.ONLY_DEFINITE_NOT_HOLDS
-    elif lisa_report.has_possibly_not_holds_assert_warning() and lisa_report.has_definite_not_holds_assert_warning() and not lisa_report.has_definite_holds_assert_warning():
-        return AssertClassification.CONFLICTING_NOT_HOLDS
-    elif not lisa_report.has_possibly_not_holds_assert_warning() and lisa_report.has_definite_not_holds_assert_warning() and lisa_report.has_definite_holds_assert_warning():
-        return AssertClassification.CONFLICTING_HOLDS_AND_NOT_HOLDS
-    elif lisa_report.has_possibly_not_holds_assert_warning() and not lisa_report.has_definite_not_holds_assert_warning() and not lisa_report.has_definite_holds_assert_warning():
-        return AssertClassification.CONFLICTING_HOLDS_AND_POSSIBLY_NOT_HOLDS
-    elif lisa_report.has_possibly_not_holds_assert_warning() and lisa_report.has_definite_not_holds_assert_warning() and lisa_report.has_definite_holds_assert_warning():
-        return AssertClassification.ALL
-    return AssertClassification.UNKNOWN
+    elif lisa_report.has_definite_assert_warning():
+        return AssertClassification.DEFINITE
+    elif lisa_report.has_only_refuted_assert_warnings():
+        return AssertClassification.ONLY_REFUTED
+    return AssertClassification.POSSIBLE
+
 
 class RuntimeClassification(Enum):
     ### FORMAT: (code, sv-comp verdict)
-    
-    # no warnings are issued
-    NO_WARNINGS = 1, "TRUE"
-    
-    # only "possible runtime exception" warnings are issued
-    ONLY_POSSIBLE_NOT_HOLDS = 2, "UNKNOWN"
-    
-    # only "definite runtime exception" warnings are issued
-    ONLY_DEFINITE_NOT_HOLDS = 3, "FALSE"
+    # as for assertions, with the warnings about uncaught runtime exceptions
 
-    # both "possible runtime exception" and "definite runtime exception" warnings are issued
-    CONFLICTING_NOT_HOLDS = 4, "FALSE"
-    
-    # unknown classification
-    UNKNOWN = 5, "UNKNOWN"
+    # no warnings are issued: the analysis proves that no runtime exception escapes the main method
+    NO_WARNINGS = 1, "TRUE"
+
+    # all warnings are refuted by their verification
+    ONLY_REFUTED = 2, "TRUE"
+
+    # some warnings are possible, and none is definite
+    POSSIBLE = 3, "UNKNOWN"
+
+    # some warning is definite: an uncaught runtime exception has been confirmed
+    DEFINITE = 4, "FALSE"
+
 
 def classify_runtime(lisa_report: LisaReport):
     if not lisa_report.has_runtime_warnings():
         return RuntimeClassification.NO_WARNINGS
-    elif lisa_report.has_only_possibly_not_holds_runtime_warning():
-        return RuntimeClassification.ONLY_POSSIBLE_NOT_HOLDS
-    elif lisa_report.has_only_definite_not_holds_runtime_warning():
-        return RuntimeClassification.ONLY_DEFINITE_NOT_HOLDS
-    elif lisa_report.has_possibly_not_holds_runtime_warning() and lisa_report.has_definite_not_holds_runtime_warning():
-        return RuntimeClassification.CONFLICTING_NOT_HOLDS
-    return RuntimeClassification.UNKNOWN
+    elif lisa_report.has_definite_runtime_warning():
+        return RuntimeClassification.DEFINITE
+    elif lisa_report.has_only_refuted_runtime_warnings():
+        return RuntimeClassification.ONLY_REFUTED
+    return RuntimeClassification.POSSIBLE

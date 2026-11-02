@@ -30,66 +30,44 @@ class LisaReport:
         return self.info.notices > 0
 
     def list_warnings(self) -> list[str]:
-        return [w.extract_warning() for w in self.warnings]
+        return [w.message for w in self.warnings]
 
     def list_notices(self) -> list[str]:
         return [n.extract_notice() for n in self.notices]
 
     # assert specific
 
-    def list_assert_warnings(self) -> list[str]:
-        return [w.extract_warning() for w in self.warnings if w.is_assertion_warning()]
+    def list_assert_warnings(self) -> list[Warning]:
+        return [w for w in self.warnings if w.is_assertion_warning()]
 
     def has_assert_warnings(self) -> bool:
         return len(self.list_assert_warnings()) > 0
 
-    def has_only_definite_holds_assert_warning(self) -> bool:
-        return all(
-            "assertion holds" in warning for warning in self.list_assert_warnings()
-        )
+    def has_definite_assert_warning(self) -> bool:
+        return any(w.definite for w in self.list_assert_warnings())
 
-    def has_definite_holds_assert_warning(self) -> bool:
-        return any(
-            "assertion holds" in warning for warning in self.list_assert_warnings()
-        )
+    def has_possible_assert_warning(self) -> bool:
+        return any(w.is_possible() for w in self.list_assert_warnings())
 
-    def has_only_possibly_not_holds_assert_warning(self) -> bool:
-        return all("POSSIBLE" in warning for warning in self.list_assert_warnings())
-
-    def has_possibly_not_holds_assert_warning(self) -> bool:
-        return any("POSSIBLE" in warning for warning in self.list_assert_warnings())
-
-    def has_only_definite_not_holds_assert_warning(self) -> bool:
-        return all(
-            "assertion DOES NOT hold" in warning
-            for warning in self.list_assert_warnings()
-        )
-
-    def has_definite_not_holds_assert_warning(self) -> bool:
-        return any(
-            "assertion DOES NOT hold" in warning
-            for warning in self.list_assert_warnings()
-        )
+    def has_only_refuted_assert_warnings(self) -> bool:
+        return all(w.refuted for w in self.list_assert_warnings())
 
     # runtime specific
 
-    def list_runtime_warnings(self) -> list[str]:
-        return [w.extract_warning() for w in self.warnings if w.is_runtime_warning()]
+    def list_runtime_warnings(self) -> list[Warning]:
+        return [w for w in self.warnings if w.is_runtime_warning()]
 
     def has_runtime_warnings(self) -> bool:
         return len(self.list_runtime_warnings()) > 0
 
-    def has_only_possibly_not_holds_runtime_warning(self) -> bool:
-        return all("POSSIBLE" in warning for warning in self.list_runtime_warnings())
+    def has_definite_runtime_warning(self) -> bool:
+        return any(w.definite for w in self.list_runtime_warnings())
 
-    def has_possibly_not_holds_runtime_warning(self) -> bool:
-        return any("POSSIBLE" in warning for warning in self.list_runtime_warnings())
+    def has_possible_runtime_warning(self) -> bool:
+        return any(w.is_possible() for w in self.list_runtime_warnings())
 
-    def has_only_definite_not_holds_runtime_warning(self) -> bool:
-        return all("DEFINITE" in warning for warning in self.list_runtime_warnings())
-
-    def has_definite_not_holds_runtime_warning(self) -> bool:
-        return any("DEFINITE" in warning for warning in self.list_runtime_warnings())
+    def has_only_refuted_runtime_warnings(self) -> bool:
+        return all(w.refuted for w in self.list_runtime_warnings())
 
     # notice specific
 
