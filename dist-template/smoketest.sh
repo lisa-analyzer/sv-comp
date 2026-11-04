@@ -68,11 +68,12 @@ fi
 
 if grep -qx jlisa-wit <<< "$components"; then
   # FALSE: witness confirmed, TRUE: witness rejected, UNKNOWN: could not validate
-  validate witness-correct.graphml valid-assert.prp nondet-assert FALSE
-  validate witness-spurious.graphml valid-assert.prp nondet-assert TRUE
-  validate witness-novalue.graphml valid-assert.prp nondet-assert UNKNOWN
-  validate witness-correct.graphml no-runtime-exception.prp nondet-rte FALSE
-  validate witness-correct.graphml no-runtime-exception.prp nondet-assert UNKNOWN
+  # format 2.4 witnesses (GraphML witnesses are no longer validated)
+  validate witness-correct.yml valid-assert.prp nondet-assert FALSE
+  validate witness-spurious.yml valid-assert.prp nondet-assert TRUE
+  validate witness-novalue.yml valid-assert.prp nondet-assert UNKNOWN
+  validate witness-correct-rte.yml no-runtime-exception.prp nondet-rte FALSE
+  validate witness-correct-rte.yml no-runtime-exception.prp nondet-assert UNKNOWN
 else
   echo "skipped: jlisa-wit not included"
 fi
