@@ -19,11 +19,13 @@ cli = typer.Typer()
 config = Config.get()
 
 # The validator's verdict -> the verdict printed as last line, as for `jlisa check`
-# (for a validator, FALSE means that the witness, i.e. the violation, is confirmed)
+# (for a validator, FALSE means that the witness, i.e. the violation, is confirmed; ERROR (parsing failed)
+# means that the witness is not a YAML witness of format 2.4)
 VERDICTS = {
     "Witness Correct": "FALSE",
     "Witness Spurious": "TRUE",
     "Could not validate": "UNKNOWN",
+    "Parsing failed": "ERROR (parsing failed)",
 }
 
 
@@ -33,7 +35,7 @@ def validate(
             ...,
             "-w",
             "--witness",
-            help="Provide path to the violation witness to validate"),
+            help="Provide path to the witness to validate (format 2.4)"),
         property: str = typer.Option(
             ...,
             "-p",
@@ -43,7 +45,7 @@ def validate(
             ...,
             help="The input directories of the task")):
     """
-    Validate a violation witness against the input files and a specified property
+    Validate a witness against the input files and a specified property
     """
 
     if not config.has_jlisa():

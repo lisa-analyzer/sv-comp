@@ -32,7 +32,8 @@ With `--bug-finding-fallback`, when jlisa ends with UNKNOWN or fails, the bug-fi
 As for SV-COMP validators, the verdict is about the property, and the last line of the output is one of:
 - FALSE: the violation of the witness is reproduced, and the witness is confirmed (the line before it is `Witness Correct`)
 - TRUE: the program runs with the values of the witness without the violation, and the witness is rejected as spurious (`Witness Spurious`)
-- UNKNOWN: the witness could not be validated (`Could not validate`)
+- UNKNOWN: the witness could not be validated (`Could not validate`) or is a correctness witness, which is only parsed
+- ERROR (parsing failed): the witness is not a YAML witness of format 2.4, e.g. a GraphML witness or another version (`Parsing failed`)
 
 #### Supported properties
 The two Java properties of SV-COMP, given as their property files:
