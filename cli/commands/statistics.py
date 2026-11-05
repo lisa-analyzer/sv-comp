@@ -120,7 +120,16 @@ def statistics():
                 treated = True
 
         if not treated and dir_name not in timed_out_tasks:
-            svcomp_iteration_df, bottoms, opens = __compute_score(results_dir, dir_name)
+            try:
+                svcomp_iteration_df, bottoms, opens = __compute_score(results_dir, dir_name)
+            except (OSError, json.JSONDecodeError) as e:
+                # jlisa did not produce a complete report (e.g., it was killed
+                # while writing it), without recording an error
+                rich.print(f"[red]No valid report for {dir_name}: {e}[/red]")
+                svcomp_iteration_df = __to_svcomp_table_entry(dir_name, "UNKNOWN (no report)", 0)
+                svcomp_scores = svcomp_scores._append(svcomp_iteration_df)
+                analysis_error_counter += 1
+                continue
             for notice in bottoms:
                 all_bottoms.append((dir_name, notice.describe()))
             for notice in opens:
