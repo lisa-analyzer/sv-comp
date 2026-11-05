@@ -19,14 +19,20 @@ cli = typer.Typer()
 config = Config.get()
 
 # The validator's verdict -> the verdict printed as last line, as for `jlisa check`
-# (for a validator, FALSE means that the witness, i.e. the violation, is confirmed; ERROR (parsing failed)
-# means that the witness is not a YAML witness of format 2.4)
+# (for a validator, FALSE means that the witness, i.e. the violation, is confirmed; ERROR (invalid witness format)
+# means that its version of the witness format is not supported (only 2.4 is), ERROR (parsing failed) that it
+# cannot be read, ERROR (invalid witness type) that it is not of the kind given with --type)
 VERDICTS = {
     "Witness Correct": "FALSE",
     "Witness Spurious": "TRUE",
     "Could not validate": "UNKNOWN",
+    "Invalid witness format": "ERROR (invalid witness format)",
     "Parsing failed": "ERROR (parsing failed)",
+    "Invalid witness type": "ERROR (invalid witness type)",
 }
+
+# The kinds of witness for --type
+WITNESS_TYPES = ("violation", "correctness")
 
 
 @cli.command()
@@ -43,7 +49,12 @@ def validate(
             help="Provide path to the property file"),
         inputs: list[str] = typer.Argument(
             ...,
-            help="The input directories of the task")):
+            help="The input directories of the task"),
+        witness_type: str | None = typer.Option(
+            None,
+            "--type",
+            help="The kind of witness expected: violation or correctness. A witness of the other kind gives "
+                 "ERROR (invalid witness type) (default: any kind, read from the witness)")):
     """
     Validate a witness against the input files and a specified property
     """
@@ -61,8 +72,13 @@ def validate(
         print(f"property file not found: {property}", file=sys.stderr)
         raise typer.Exit(code=1)
 
+    if witness_type is not None and witness_type not in WITNESS_TYPES:
+        print(f"--type must be violation or correctness, not {witness_type}", file=sys.stderr)
+        raise typer.Exit(code=1)
+
     # jlisa-wit reads the property file, and cannot validate other properties
-    output = run_jlisa_wit(config, "validate", inputs, property, ["--witness", os.path.abspath(witness)])
+    output = run_jlisa_wit(config, "validate", inputs, property,
+                           ["--witness", os.path.abspath(witness)] + (["--type", witness_type] if witness_type else []))
 
     verdicts = [line.strip() for line in output.splitlines() if line.strip() in VERDICTS]
     verdict = verdicts[-1] if verdicts else "Could not validate"
