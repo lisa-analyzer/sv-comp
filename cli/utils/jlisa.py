@@ -16,11 +16,6 @@ COULD_NOT_VALIDATE = "Could not validate"
 
 # The time of the search of the bug-finding fallback, in seconds, when not given
 BUG_FINDING_TIME_LIMIT = 120
-# Exceptions caused by the environment where jlisa-wit runs the program, not by the program (e.g., AWT
-# without a display): a run that ends with one of them is not a violation
-ENVIRONMENT_EXCEPTIONS = {
-    "java.awt.HeadlessException",
-}
 
 
 def property_files(task: TaskDefinition) -> list[str]:
@@ -123,9 +118,8 @@ def find_bug(config: Config, inputs: list[str], property_file: str, time_limit: 
     Looks for a violation of the property with the bug-finding mode of jlisa-wit, which runs the program and
     only reports a violation that a run really reaches, and writes its violation witness to the given file.
     Returns the verdict and the reason jlisa-wit gives for it: FALSE if a run violates the property, otherwise
-    UNKNOWN ("UNKNOWN (environment)" when the run ends with one of the ENVIRONMENT_EXCEPTIONS). It never
-    returns TRUE. The witness is only kept with FALSE. jlisa-wit needs the property file and input
-    directories, as SV-COMP gives them.
+    UNKNOWN. It never returns TRUE. The witness is only kept with FALSE. jlisa-wit needs the property file and
+    input directories, as SV-COMP gives them.
     """
     witness.unlink(missing_ok=True)
     if not Path(property_file).is_file() or not all(Path(p).is_dir() for p in inputs):
@@ -141,10 +135,7 @@ def find_bug(config: Config, inputs: list[str], property_file: str, time_limit: 
     found = "Violation found" in [line.strip() for line in output.splitlines()]
     reasons = [line.split("[REASON]", 1)[1].strip() for line in errors.splitlines() if "[REASON]" in line]
     reason = reasons[-1] if reasons else ""
-    if found and any(exception in reason for exception in ENVIRONMENT_EXCEPTIONS):
-        verdict = "UNKNOWN (environment)"
-    else:
-        verdict = "FALSE" if found else "UNKNOWN"
+    verdict = "FALSE" if found else "UNKNOWN"
     if verdict != "FALSE":
         witness.unlink(missing_ok=True)
     return verdict, reason
