@@ -33,7 +33,9 @@ As for SV-COMP validators, the verdict is about the property, and the last line 
 - FALSE: the violation of the witness is reproduced, and the witness is confirmed (the line before it is `Witness Correct`)
 - TRUE: the program runs with the values of the witness without the violation, and the witness is rejected as spurious (`Witness Spurious`)
 - UNKNOWN: the witness could not be validated (`Could not validate`) or is a correctness witness, which is only parsed
-- ERROR (parsing failed): the witness is not a YAML witness of format 2.4, e.g. a GraphML witness or another version (`Parsing failed`)
+- ERROR (invalid witness format): the witness has a version of the witness format other than 2.4 (`Invalid witness format`)
+- ERROR (parsing failed): the witness cannot be read, e.g. a GraphML witness or an empty file (`Parsing failed`)
+- ERROR (invalid witness type): with `--type violation` or `--type correctness`, the witness is of the other kind (`Invalid witness type`)
 
 #### Supported properties
 The two Java properties of SV-COMP, given as their property files:

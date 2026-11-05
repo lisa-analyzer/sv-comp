@@ -38,8 +38,8 @@ check() {
 # validate WITNESS PROPERTY PROGRAM EXPECTED
 validate() {
   local witness="$1" property="$2" program="$3" expected="$4"
-  expect "validate $witness $property $program" \
-    "$($JLISA validate --witness "$TEST/$witness" --property "$TEST/$property" "$TEST/common/" "$TEST/$program/" | tail -n 1)" \
+  expect "validate ${VALIDATE_OPTIONS:-}${VALIDATE_OPTIONS:+ }$witness $property $program" \
+    "$($JLISA validate ${VALIDATE_OPTIONS:-} --witness "$TEST/$witness" --property "$TEST/$property" "$TEST/common/" "$TEST/$program/" | tail -n 1)" \
     "$expected"
 }
 
@@ -68,7 +68,7 @@ fi
 
 if grep -qx jlisa-wit <<< "$components"; then
   # FALSE: witness confirmed, TRUE: witness rejected, UNKNOWN: could not validate,
-  # ERROR (parsing failed): not a YAML witness of format 2.4 (e.g. GraphML or another version)
+  # ERROR (invalid witness format): a version other than 2.4, ERROR (parsing failed): e.g. GraphML
   validate witness-correct.yml valid-assert.prp nondet-assert FALSE
   validate witness-spurious.yml valid-assert.prp nondet-assert TRUE
   validate witness-novalue.yml valid-assert.prp nondet-assert UNKNOWN
@@ -76,8 +76,13 @@ if grep -qx jlisa-wit <<< "$components"; then
   validate witness-correct-rte.yml no-runtime-exception.prp nondet-assert UNKNOWN
   # a correctness witness is only parsed
   validate witness-invariants.yml valid-assert.prp nondet-assert UNKNOWN
-  validate witness-correct-2.3.yml valid-assert.prp nondet-assert "ERROR (parsing failed)"
+  validate witness-correct-2.3.yml valid-assert.prp nondet-assert "ERROR (invalid witness format)"
   validate witness-correct.graphml valid-assert.prp nondet-assert "ERROR (parsing failed)"
+  # with --type, as in the two SV-COMP tracks: a witness of the other kind is not validated
+  VALIDATE_OPTIONS="--type violation" validate witness-correct.yml valid-assert.prp nondet-assert FALSE
+  VALIDATE_OPTIONS="--type violation" validate witness-invariants.yml valid-assert.prp nondet-assert "ERROR (invalid witness type)"
+  VALIDATE_OPTIONS="--type correctness" validate witness-invariants.yml valid-assert.prp nondet-assert UNKNOWN
+  VALIDATE_OPTIONS="--type correctness" validate witness-correct.yml valid-assert.prp nondet-assert "ERROR (invalid witness type)"
 else
   echo "skipped: jlisa-wit not included"
 fi
