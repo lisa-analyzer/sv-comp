@@ -12,19 +12,27 @@ import typer
 
 # Project-local imports
 from cli.models.config import Config
-from cli.utils.jlisa import run_jlisa_wit
+from cli.utils.jlisa import jlisa_verdict, run_jlisa_wit
 
 # CLI setup
 cli = typer.Typer()
 config = Config.get()
 
 # The validator's verdict -> the verdict printed as last line, as for `jlisa check`
-# (for a validator, FALSE means that the witness, i.e. the violation, is confirmed)
+# (for a validator, FALSE means that the witness, i.e. the violation, is confirmed; ERROR (invalid witness format)
+# means that its version of the witness format is not supported (only 2.4 is), ERROR (parsing failed) that it
+# cannot be read, ERROR (invalid witness type) that it is not of the kind given with --type)
 VERDICTS = {
     "Witness Correct": "FALSE",
     "Witness Spurious": "TRUE",
     "Could not validate": "UNKNOWN",
+    "Invalid witness format": "ERROR (invalid witness format)",
+    "Parsing failed": "ERROR (parsing failed)",
+    "Invalid witness type": "ERROR (invalid witness type)",
 }
+
+# The kinds of witness for --type
+WITNESS_TYPES = ("violation", "correctness")
 
 
 @cli.command()
@@ -33,7 +41,7 @@ def validate(
             ...,
             "-w",
             "--witness",
-            help="Provide path to the violation witness to validate"),
+            help="Provide path to the witness to validate (format 2.4)"),
         property: str = typer.Option(
             ...,
             "-p",
@@ -41,9 +49,14 @@ def validate(
             help="Provide path to the property file"),
         inputs: list[str] = typer.Argument(
             ...,
-            help="The input directories of the task")):
+            help="The input directories of the task"),
+        witness_type: str | None = typer.Option(
+            None,
+            "--type",
+            help="The kind of witness expected: violation or correctness. A witness of the other kind gives "
+                 "ERROR (invalid witness type) (default: any kind, read from the witness)")):
     """
-    Validate a violation witness against the input files and a specified property
+    Validate a witness against the input files and a specified property
     """
 
     if not config.has_jlisa():
@@ -59,11 +72,17 @@ def validate(
         print(f"property file not found: {property}", file=sys.stderr)
         raise typer.Exit(code=1)
 
-    # jlisa-wit reads the property file, and cannot validate other properties
-    output = run_jlisa_wit(config, inputs, property, ["--witness", os.path.abspath(witness)])
+    if witness_type is not None and witness_type not in WITNESS_TYPES:
+        print(f"--type must be violation or correctness, not {witness_type}", file=sys.stderr)
+        raise typer.Exit(code=1)
 
-    verdicts = [line.strip() for line in output.splitlines() if line.strip() in VERDICTS]
-    verdict = verdicts[-1] if verdicts else "Could not validate"
+    # jlisa-wit reads the property file, and cannot validate other properties
+    output = run_jlisa_wit(config, "validate", inputs, property,
+                           ["--witness", os.path.abspath(witness)] + (["--type", witness_type] if witness_type else []))
+
+    verdict = jlisa_verdict(output)
+    if verdict not in VERDICTS:
+        verdict = "Could not validate"
     # the validator's own verdict on stderr (in the log), before the verdict, which must be the last line
     print(verdict, file=sys.stderr, flush=True)
     print(VERDICTS[verdict])

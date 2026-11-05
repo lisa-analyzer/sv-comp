@@ -1,0 +1,27 @@
+- entry_type: invariant_set
+  metadata:
+    format_version: "2.4"
+    uuid: 0b5e7d2a-6a0e-4c43-9a51-3f6a1c2d0006
+    creation_time: 2026-11-05T10:00:00Z
+    producer:
+      name: jlisa smoketest
+      version: "0.1"
+    task:
+      input_files:
+        - common/org/sosy_lab/sv_benchmarks/Verifier.java
+        - nondet-assert/Main.java
+      input_file_hashes:
+        common/org/sosy_lab/sv_benchmarks/Verifier.java: 70166515c8f6f5c8b97e886be063ad2d964f3401ed4bba3c3c9f61cf00badccc
+        nondet-assert/Main.java: 0107f2921ce30886f1788f2a688e206c3c8c863434844b91394198d2baf966bf
+      specification: "CHECK( init(Main.main()), LTL(G assert) )"
+      language: Java
+  content:
+    - invariant:
+        type: location_invariant
+        location:
+          file_name: nondet-assert/Main.java
+          line: 6
+          column: 5
+          function: main
+        value: "true"
+        format: java_expression
