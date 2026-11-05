@@ -8,9 +8,7 @@ from cli.models.config import Config
 from cli.models.property import SVCOMP_NAMES
 from cli.models.task_definition.task_definition import TaskDefinition
 
-# The main classes of the jlisa package: jlisa, and its witness validator jlisa-wit
 JLISA_MAIN_CLASS = "it.unive.jlisa.Main"
-JLISA_WIT_MAIN_CLASS = "it.unive.jlisa.witness.validator.Main"
 
 # The verdict of jlisa-wit that confirms a violation witness, and the one when it cannot tell
 WITNESS_CORRECT = "Witness Correct"
@@ -51,9 +49,9 @@ def get_lisa_cmd(
     to witness/<property>/witness.yml in the output directory.
 
     The command is:
-        java -Xmx<max_memory>G -cp <path_to_lisa_instance> it.unive.jlisa.Main
+        java -Xmx<max_memory>G -cp <path_to_lisa_instance> it.unive.jlisa.Main check
             -s <input-1> <...> <input-N> -o <output-dir>
-            -n <numerical_domain> -m Statistics -c Assert --l ERROR [-d -e] [--dump-graphs]
+            -n <numerical_domain> -m Statistics -c Assert -l ERROR [-d -e] [--dump-graphs]
             [--svcomp-property <property-file-1> <...> --svcomp-property <property-file-N>]
     """
     out = (
@@ -67,30 +65,30 @@ def get_lisa_cmd(
         "java",
         f"-Xmx{max_memory}G",
         "-cp", classpath,
-        JLISA_MAIN_CLASS,
+        JLISA_MAIN_CLASS, "check",
         "-s", *input_files,
         "-o", out,
         "-n", config.numerical_domain,
         "-m", "Statistics",
         "-c", "Assert",
-        "--l", "ERROR",
+        "-l", "ERROR",
     ] + (["-d", "-e"] if debug else []) + (["--dump-graphs"] if dump_graphs else []) + [
         arg for property_file in (property_files or []) for arg in ("--svcomp-property", property_file)
     ]
 
 
-def run_jlisa_wit(config: Config, inputs: list[str], property_file: str, args: list[str],
+def run_jlisa_wit(config: Config, sub_command: str, inputs: list[str], property_file: str, args: list[str],
                   timeout: float | None = None, with_stderr: bool = False) -> str | tuple[str, str]:
     """
-    Runs jlisa-wit on a task as SV-COMP gives it to the tool (its inputs and its property file), returning
-    its stdout, or its stdout and its stderr (where it explains its verdict) with with_stderr. The paths are
-    passed as they were given, since jlisa-wit writes them in its witnesses; jlisa-wit runs the programs in
-    a temporary directory of its own.
+    Runs jlisa-wit (the sub-command validate or find-bug of jlisa) on a task as SV-COMP gives it to the tool
+    (its inputs and its property file), returning its stdout, or its stdout and its stderr (where it explains
+    its verdict) with with_stderr. The paths are passed as they were given, since jlisa-wit writes them in its
+    witnesses; jlisa-wit runs the programs in a temporary directory of its own.
     """
 
     java = os.path.join(os.environ["JAVA_HOME"], "bin", "java") if "JAVA_HOME" in os.environ else "java"
     classpath = os.path.abspath(str(config.path_to_lisa_instance).replace('"', ''))
-    command = [java, "--add-modules", "jdk.jdi", "-cp", classpath, JLISA_WIT_MAIN_CLASS, *args,
+    command = [java, "--add-modules", "jdk.jdi", "-cp", classpath, JLISA_MAIN_CLASS, sub_command, *args,
                "--svcomp-property", property_file,
                # last, since it takes all the following arguments
                "--source", *inputs]
@@ -107,7 +105,8 @@ def validate_witness(config: Config, inputs: list[str], property_file: str, witn
     "Witness Correct") and the reason it gives for it (its last [REASON] line, or "").
     """
     try:
-        output, errors = run_jlisa_wit(config, inputs, property_file, ["--witness", str(witness.absolute())],
+        output, errors = run_jlisa_wit(config, "validate", inputs, property_file,
+                                       ["--witness", str(witness.absolute())],
                                        timeout=timeout, with_stderr=True)
     except subprocess.TimeoutExpired:
         return COULD_NOT_VALIDATE, f"timeout after {timeout} s"
@@ -133,8 +132,8 @@ def find_bug(config: Config, inputs: list[str], property_file: str, time_limit: 
         return "UNKNOWN", "bug finding needs the property file and input directories"
     witness.parent.mkdir(parents=True, exist_ok=True)
     try:
-        output, errors = run_jlisa_wit(config, inputs, property_file,
-                                       ["--find-bug", "--time-limit", str(time_limit),
+        output, errors = run_jlisa_wit(config, "find-bug", inputs, property_file,
+                                       ["--time-limit", str(time_limit),
                                         "--witness-output", str(witness.absolute())],
                                        timeout=float(time_limit) + 60, with_stderr=True)
     except (subprocess.TimeoutExpired, OSError) as e:

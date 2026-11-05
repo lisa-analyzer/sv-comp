@@ -62,7 +62,7 @@ def validate(
         raise typer.Exit(code=1)
 
     # jlisa-wit reads the property file, and cannot validate other properties
-    output = run_jlisa_wit(config, inputs, property, ["--witness", os.path.abspath(witness)])
+    output = run_jlisa_wit(config, "validate", inputs, property, ["--witness", os.path.abspath(witness)])
 
     verdicts = [line.strip() for line in output.splitlines() if line.strip() in VERDICTS]
     verdict = verdicts[-1] if verdicts else "Could not validate"
