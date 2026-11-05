@@ -12,7 +12,7 @@ import typer
 
 # Project-local imports
 from cli.models.config import Config
-from cli.utils.jlisa import run_jlisa_wit
+from cli.utils.jlisa import jlisa_verdict, run_jlisa_wit
 
 # CLI setup
 cli = typer.Typer()
@@ -80,8 +80,9 @@ def validate(
     output = run_jlisa_wit(config, "validate", inputs, property,
                            ["--witness", os.path.abspath(witness)] + (["--type", witness_type] if witness_type else []))
 
-    verdicts = [line.strip() for line in output.splitlines() if line.strip() in VERDICTS]
-    verdict = verdicts[-1] if verdicts else "Could not validate"
+    verdict = jlisa_verdict(output)
+    if verdict not in VERDICTS:
+        verdict = "Could not validate"
     # the validator's own verdict on stderr (in the log), before the verdict, which must be the last line
     print(verdict, file=sys.stderr, flush=True)
     print(VERDICTS[verdict])

@@ -13,6 +13,8 @@ JLISA_MAIN_CLASS = "it.unive.jlisa.Main"
 # The verdict of jlisa-wit that confirms a violation witness, and the one when it cannot tell
 WITNESS_CORRECT = "Witness Correct"
 COULD_NOT_VALIDATE = "Could not validate"
+# Prefix for extracting the witness verdict from the output of jlisa validate.
+VERDICT_PREFIX = "[VERDICT] "
 
 # The time of the search of the bug-finding fallback, in seconds, when not given
 BUG_FINDING_TIME_LIMIT = 120
@@ -73,43 +75,58 @@ def get_lisa_cmd(
 
 
 def run_jlisa_wit(config: Config, sub_command: str, inputs: list[str], property_file: str, args: list[str],
-                  timeout: float | None = None, with_stderr: bool = False) -> str | tuple[str, str]:
+                  timeout: float | None = None) -> str:
     """
     Runs jlisa-wit (the sub-command validate or find-bug of jlisa) on a task as SV-COMP gives it to the tool
-    (its inputs and its property file), returning its stdout, or its stdout and its stderr (where it explains
-    its verdict) with with_stderr. The paths are passed as they were given, since jlisa-wit writes them in its
-    witnesses; jlisa-wit runs the programs in a temporary directory of its own.
+    (its inputs and its property file), returning its stdout: its verdict (see jlisa_verdict), the reason for
+    it (see jlisa_reason) and its logs, at level ERROR. The paths are passed as they were given, since
+    jlisa-wit writes them in its witnesses; jlisa-wit runs the programs in a temporary directory of its own.
     """
 
     java = os.path.join(os.environ["JAVA_HOME"], "bin", "java") if "JAVA_HOME" in os.environ else "java"
     classpath = os.path.abspath(str(config.path_to_lisa_instance).replace('"', ''))
-    command = [java, "--add-modules", "jdk.jdi", "-cp", classpath, JLISA_MAIN_CLASS, sub_command, *args,
+    command = [java, "--add-modules", "jdk.jdi", "-cp", classpath, JLISA_MAIN_CLASS, sub_command,
+               "-l", "ERROR", *args,
                "--svcomp-property", property_file,
                # last, since it takes all the following arguments
                "--source", *inputs]
 
-    process = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE if with_stderr else None,
-                             text=True, timeout=timeout)
-    return (process.stdout, process.stderr) if with_stderr else process.stdout
+    return subprocess.run(command, stdout=subprocess.PIPE, text=True, timeout=timeout).stdout
+
+
+def jlisa_verdict(output: str) -> str | None:
+    """
+    The verdict in the given output of jlisa-wit (e.g. "Witness Correct"): its last line that starts with
+    VERDICT_PREFIX, without the prefix, or None if there is none.
+    """
+    prefix = VERDICT_PREFIX.strip()
+    verdicts = [line.strip()[len(prefix):].strip() for line in output.splitlines()
+                if line.strip().startswith(prefix)]
+    return verdicts[-1] if verdicts else None
+
+
+def jlisa_reason(output: str) -> str:
+    """
+    The reason jlisa-wit gives for its verdict in the given output: its last [REASON] line, or "".
+    """
+    reasons = [line.split("[REASON]", 1)[1].strip() for line in output.splitlines() if "[REASON]" in line]
+    return reasons[-1] if reasons else ""
 
 
 def validate_witness(config: Config, inputs: list[str], property_file: str, witness: Path,
                      timeout: float | None = None) -> tuple[str, str]:
     """
-    Validates a violation witness with jlisa-wit, returning its verdict (the last line it prints, e.g.
-    "Witness Correct") and the reason it gives for it (its last [REASON] line, or "").
+    Validates a violation witness with jlisa-wit, returning its verdict (e.g. "Witness Correct") and the
+    reason it gives for it (or "").
     """
     try:
-        output, errors = run_jlisa_wit(config, "validate", inputs, property_file,
-                                       ["--witness", str(witness.absolute())],
-                                       timeout=timeout, with_stderr=True)
+        output = run_jlisa_wit(config, "validate", inputs, property_file,
+                               ["--witness", str(witness.absolute())], timeout=timeout)
     except subprocess.TimeoutExpired:
         return COULD_NOT_VALIDATE, f"timeout after {timeout} s"
     except OSError as e:
         return COULD_NOT_VALIDATE, f"jlisa-wit cannot run: {e}"
-    verdicts = [line.strip() for line in output.splitlines() if line.strip()]
-    reasons = [line.split("[REASON]", 1)[1].strip() for line in errors.splitlines() if "[REASON]" in line]
-    return verdicts[-1] if verdicts else COULD_NOT_VALIDATE, reasons[-1] if reasons else ""
+    return jlisa_verdict(output) or COULD_NOT_VALIDATE, jlisa_reason(output)
 
 
 def find_bug(config: Config, inputs: list[str], property_file: str, time_limit: int,
@@ -126,16 +143,13 @@ def find_bug(config: Config, inputs: list[str], property_file: str, time_limit: 
         return "UNKNOWN", "bug finding needs the property file and input directories"
     witness.parent.mkdir(parents=True, exist_ok=True)
     try:
-        output, errors = run_jlisa_wit(config, "find-bug", inputs, property_file,
-                                       ["--time-limit", str(time_limit),
-                                        "--witness-output", str(witness.absolute())],
-                                       timeout=float(time_limit) + 60, with_stderr=True)
+        output = run_jlisa_wit(config, "find-bug", inputs, property_file,
+                               ["--time-limit", str(time_limit), "--witness-output", str(witness.absolute())],
+                               timeout=float(time_limit) + 60)
     except (subprocess.TimeoutExpired, OSError) as e:
         return "UNKNOWN", f"bug finding failed: {e}"
-    found = "Violation found" in [line.strip() for line in output.splitlines()]
-    reasons = [line.split("[REASON]", 1)[1].strip() for line in errors.splitlines() if "[REASON]" in line]
-    reason = reasons[-1] if reasons else ""
-    verdict = "FALSE" if found else "UNKNOWN"
+    reason = jlisa_reason(output)
+    verdict = "FALSE" if jlisa_verdict(output) == "Violation found" else "UNKNOWN"
     if verdict != "FALSE":
         witness.unlink(missing_ok=True)
     return verdict, reason
