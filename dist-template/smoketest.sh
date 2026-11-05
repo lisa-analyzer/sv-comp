@@ -67,13 +67,17 @@ else
 fi
 
 if grep -qx jlisa-wit <<< "$components"; then
-  # FALSE: witness confirmed, TRUE: witness rejected, UNKNOWN: could not validate
-  # format 2.4 witnesses (GraphML witnesses are no longer validated)
+  # FALSE: witness confirmed, TRUE: witness rejected, UNKNOWN: could not validate,
+  # ERROR (parsing failed): not a YAML witness of format 2.4 (e.g. GraphML or another version)
   validate witness-correct.yml valid-assert.prp nondet-assert FALSE
   validate witness-spurious.yml valid-assert.prp nondet-assert TRUE
   validate witness-novalue.yml valid-assert.prp nondet-assert UNKNOWN
   validate witness-correct-rte.yml no-runtime-exception.prp nondet-rte FALSE
   validate witness-correct-rte.yml no-runtime-exception.prp nondet-assert UNKNOWN
+  # a correctness witness is only parsed
+  validate witness-invariants.yml valid-assert.prp nondet-assert UNKNOWN
+  validate witness-correct-2.3.yml valid-assert.prp nondet-assert "ERROR (parsing failed)"
+  validate witness-correct.graphml valid-assert.prp nondet-assert "ERROR (parsing failed)"
 else
   echo "skipped: jlisa-wit not included"
 fi
