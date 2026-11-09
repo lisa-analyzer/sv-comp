@@ -26,15 +26,20 @@ def validate_run_witnesses(config: Config, witnesses: list[tuple[TaskDefinition,
                            parallelism: int):
     """
     Validates with jlisa-wit the violation witnesses that jlisa wrote in a run, one for each task and property
-    file given, in results/<task>/witness/<property>/witness.yml (those that do not exist are skipped).
+    file given, in results/<task>/<property>/witness/<property>/witness.yml (or results/<task>/witness/... for runs
+    checking all the properties of a task at once; those that do not exist are skipped).
     Writes the verdict of jlisa-wit and its reason to validation.txt next to each witness (read by the
     statistics), and all of them to witness-validation.csv in the output directory.
     """
     jobs = []
     for task, property_file in witnesses:
         property_name = Path(property_file).stem
-        witness = (Path(str(config.path_to_output_dir)) / "results" / task.file_name / "witness" / property_name
-                   / "witness.yml")
+        # the results of the run checking the property (results/<task>/<property>), or of the run checking all
+        # the properties of the task (results/<task>)
+        results = Path(str(config.path_to_output_dir)) / "results" / task.file_name
+        if (results / property_name).is_dir():
+            results = results / property_name
+        witness = results / "witness" / property_name / "witness.yml"
         if witness.is_file():
             jobs.append((task, property_name, property_file, witness))
 

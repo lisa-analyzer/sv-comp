@@ -50,10 +50,19 @@ def property_files(task: TaskDefinition) -> list[str]:
 
 
 
+def run_name(task: TaskDefinition, property_file: str) -> str:
+    """
+    The name of the run checking the given property of the task, that is, the folder of its results in the
+    results of a run of analyse: <task>/<property> (e.g. "Main/valid-assert"), as each property of a task is
+    checked by a run of its own.
+    """
+    return f"{task.file_name}/{Path(property_file).stem}"
+
+
 def get_lisa_cmd(
     config: Config, input_files: list[str], file_name: str, max_memory: int, debug: bool = False,
     property_files: list[str] | None = None, dump_graphs: bool = False, z3: str | None = None,
-    verifier: str = "Reachability"
+    verifier: str = "Reachability", time_limit: int | None = None
 ) -> list[str]:
     """
     Get the command to run LiSA from the configuration file, as a list of arguments. With debug, jlisa
@@ -62,6 +71,8 @@ def get_lisa_cmd(
     With z3, jlisa uses that z3 executable to verify its warnings (otherwise, the one in the PATH, if any).
     The verifier is the one jlisa uses to verify its warnings: Reachability (through the results of the
     analysis) or Combined (the SV-COMP verifier, falling back to model checking with z3).
+    With time_limit (in seconds), jlisa ends the verification of its warnings in time to write its results
+    within that time (warnings not verified by then stay possible).
     For each property file, jlisa also writes the violation witness of a definite violation of that property,
     to witness/<property>/witness.yml in the output directory.
 
@@ -69,7 +80,7 @@ def get_lisa_cmd(
         java -Xmx<max_memory>G -cp <path_to_lisa_instance> it.unive.jlisa.Main check
             -s <input-1> <...> <input-N> -o <output-dir>
             -n <numerical_domain> -m Statistics -c Assert -t <verifier> -l ERROR [-d -e] [--dump-graphs]
-            [--z3 <z3>]
+            [--z3 <z3>] [--time-limit <time_limit>]
             [--svcomp-property <property-file-1> <...> --svcomp-property <property-file-N>]
     """
     out = (
@@ -93,7 +104,7 @@ def get_lisa_cmd(
         "-l", "ERROR",
     ] + (["-d", "-e"] if debug else []) + (["--dump-graphs"] if dump_graphs else []) + (
         ["--z3", z3] if z3 else []
-    ) + [
+    ) + (["--time-limit", str(time_limit)] if time_limit else []) + [
         arg for property_file in (property_files or []) for arg in ("--svcomp-property", property_file)
     ]
 

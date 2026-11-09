@@ -28,7 +28,7 @@ from cli.models.config import Config
 from cli.models.property import SVCOMP_NAMES
 from cli.models.task_definition.task_definition import TaskDefinition
 from cli.utils.bug_finding import run_bug_finding_fallback
-from cli.utils.jlisa import BUG_FINDING_TIME_LIMIT, get_lisa_cmd, property_files
+from cli.utils.jlisa import BUG_FINDING_TIME_LIMIT, get_lisa_cmd, property_files, run_name
 from cli.utils.witness_validation import validate_run_witnesses
 
 # CLI setup
@@ -40,6 +40,7 @@ class WorkerTask:
     def __init__(
         self,
         task: TaskDefinition,
+        property_file: str,
         start_time: float,
         timeout: int,
         max_memory: int,
@@ -53,6 +54,9 @@ class WorkerTask:
         verifier: str,
     ):
         self.task = task
+        # the property checked by this analysis: as in SV-COMP, each property of a task is checked by a run of
+        # its own, whose results go to results/<task>/<property>
+        self.property_file = property_file
         self.start_time = start_time
         self.timeout = timeout
         self.max_memory = max_memory
@@ -164,14 +168,16 @@ def analyse(
 
     start_time = time.time()
     timed_out = []
-    total_tasks = len(tasks)
+    # one run for each property of each task, as in SV-COMP
+    runs = [(task, f) for task in tasks for f in property_files(task)]
+    total_tasks = len(runs)
     lock = Lock()
 
     with ThreadPoolExecutor(max_workers=parallelism) as executor:
         i = 1
-        for task in tasks:
+        for task, property_file in runs:
             tsk = WorkerTask(
-                task, start_time, timeout, max_memory, timed_out, total_tasks, i, lock,
+                task, property_file, start_time, timeout, max_memory, timed_out, total_tasks, i, lock,
                 bug_finding_time_limit if bug_finding_fallback else None, dump_graphs, z3,
                 "Combined" if combined_pdr else "Reachability"
             )
@@ -186,17 +192,16 @@ def analyse(
                 f.write(f"{t}\n")
 
     if validate_witnesses:
-        validate_run_witnesses(
-            config, [(task, f) for task in tasks for f in property_files(task)], timeout, parallelism
-        )
+        validate_run_witnesses(config, runs, timeout, parallelism)
 
 
 def __perform_analysis(task: WorkerTask):
     # the input files of a harvested task are saved as one string, separated by spaces
+    run = run_name(task.task, task.property_file)
     command = get_lisa_cmd(
-        config, str(task.task.input_file).split(), f"results/{task.task.file_name}", task.max_memory,
-        debug=True, property_files=property_files(task.task), dump_graphs=task.dump_graphs, z3=task.z3,
-        verifier=task.verifier
+        config, str(task.task.input_file).split(), f"results/{run}", task.max_memory,
+        debug=True, property_files=[task.property_file], dump_graphs=task.dump_graphs, z3=task.z3,
+        verifier=task.verifier, time_limit=task.timeout
     )
 
     rich.print(
@@ -219,7 +224,7 @@ def __perform_analysis(task: WorkerTask):
         os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
         proc.wait()
         with task.lock:
-            task.timed_out.append(str(task.task.file_name))
+            task.timed_out.append(run)
         elapsed = time.time() - task.start_time
         elapsed_hms = time.strftime("%H:%M:%S", time.gmtime(elapsed))
         rich.print(
@@ -236,5 +241,5 @@ def __perform_analysis(task: WorkerTask):
         )
 
     if task.bug_finding_time_limit:
-        run_bug_finding_fallback(config, task.task, Path(str(config.path_to_output_dir)) / "results" / task.task.file_name,
-                                 task.bug_finding_time_limit)
+        run_bug_finding_fallback(config, task.task, Path(str(config.path_to_output_dir)) / "results" / run,
+                                 task.bug_finding_time_limit, [task.property_file])

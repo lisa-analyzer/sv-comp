@@ -49,6 +49,9 @@ NO_WARNINGS = "LiSA produced no warnings"
 # The column of the results with the reasons why warnings stayed possible, when the verdict of jlisa is UNKNOWN
 POSSIBLE_COLUMN = "Possible because"
 
+# The properties, for each name of the folder of the results of the run checking it (results/<task>/<property>)
+PROPERTIES = {name: property for property, name in SVCOMP_NAMES.items()}
+
 
 @cli.command()
 def statistics():
@@ -74,70 +77,84 @@ def statistics():
         with open(f"{config.path_to_output_dir!s}/timed_out.txt", "r") as f:
             timed_out_tasks = [line.strip() for line in f]
 
-    def process_csv(file_path, dataframe):
+    def process_csv(file_path, dataframe, test_case):
         temp = (
             pandas.read_csv(file_path, sep=";")[["Message", "Type"]]
             .groupby(["Message"])
             .count()
         )
-        return __add_row(temp, dataframe, os.path.basename(os.path.dirname(file_path)))
+        return __add_row(temp, dataframe, test_case)
 
     for dir_name in os.listdir(output_dir):
-        results_dir = os.path.join(output_dir, dir_name)
-        if not os.path.isdir(results_dir):
+        task_dir = os.path.join(output_dir, dir_name)
+        if not os.path.isdir(task_dir):
             continue
 
-        treated = False
+        # the runs of the task: one for each property, as in SV-COMP (results/<task>/<property>), or a single one
+        # checking all of them (results/<task>, as in older runs)
+        runs = [
+            (os.path.join(task_dir, name), PROPERTIES[name])
+            for name in sorted(os.listdir(task_dir))
+            if name in PROPERTIES and os.path.isdir(os.path.join(task_dir, name))
+        ]
+        if not runs:
+            runs = [(task_dir, None)]
 
-        for file in os.listdir(results_dir):
-            file_path = os.path.join(results_dir, file)
+        for results_dir, only in runs:
+            run = dir_name if only is None else f"{dir_name}/{SVCOMP_NAMES[only]}"
+            treated = False
 
-            if file == "frontend.csv":
-                parsing_error_table = process_csv(file_path, parsing_error_table)
-                svcomp_iteration_df = __to_svcomp_table_entry(
-                    dir_name, "UNKNOWN (parsing)", 0
-                )
+            for file in os.listdir(results_dir):
+                file_path = os.path.join(results_dir, file)
+
+                if file == "frontend.csv":
+                    parsing_error_table = process_csv(file_path, parsing_error_table, dir_name)
+                    svcomp_iteration_df = __to_svcomp_table_entry(
+                        dir_name, "UNKNOWN (parsing)", 0, only
+                    )
+                    svcomp_scores = svcomp_scores._append(svcomp_iteration_df)
+                    parsing_error_counter += 1
+                    treated = True
+
+                elif file == "frontend-noparsing.csv":
+                    frontend_error_table = process_csv(file_path, frontend_error_table, dir_name)
+                    svcomp_iteration_df = __to_svcomp_table_entry(
+                        dir_name, "UNKNOWN (frontend)", 0, only
+                    )
+                    svcomp_scores = svcomp_scores._append(svcomp_iteration_df)
+                    frontend_error_counter += 1
+                    treated = True
+
+                elif file == "analysis.csv":
+                    analysis_error_table = process_csv(file_path, analysis_error_table, dir_name)
+                    svcomp_iteration_df = __to_svcomp_table_entry(
+                        dir_name, "UNKNOWN (analysis)", 0, only
+                    )
+                    svcomp_scores = svcomp_scores._append(svcomp_iteration_df)
+                    analysis_error_counter += 1
+                    treated = True
+
+            if not treated and run not in timed_out_tasks:
+                try:
+                    svcomp_iteration_df, bottoms, opens = __compute_score(results_dir, dir_name, only)
+                except (OSError, json.JSONDecodeError) as e:
+                    # jlisa did not produce a complete report (e.g., it was killed
+                    # while writing it), without recording an error
+                    rich.print(f"[red]No valid report for {run}: {e}[/red]")
+                    svcomp_iteration_df = __to_svcomp_table_entry(dir_name, "UNKNOWN (no report)", 0, only)
+                    svcomp_scores = svcomp_scores._append(svcomp_iteration_df)
+                    analysis_error_counter += 1
+                    continue
+                for notice in bottoms:
+                    all_bottoms.append((dir_name, notice.describe()))
+                for notice in opens:
+                    all_opens.append((dir_name, notice.describe()))
                 svcomp_scores = svcomp_scores._append(svcomp_iteration_df)
-                parsing_error_counter += 1
-                treated = True
 
-            elif file == "frontend-noparsing.csv":
-                frontend_error_table = process_csv(file_path, frontend_error_table)
-                svcomp_iteration_df = __to_svcomp_table_entry(
-                    dir_name, "UNKNOWN (frontend)", 0
-                )
-                svcomp_scores = svcomp_scores._append(svcomp_iteration_df)
-                frontend_error_counter += 1
-                treated = True
-
-            elif file == "analysis.csv":
-                analysis_error_table = process_csv(file_path, analysis_error_table)
-                svcomp_iteration_df = __to_svcomp_table_entry(
-                    dir_name, "UNKNOWN (analysis)", 0
-                )
-                svcomp_scores = svcomp_scores._append(svcomp_iteration_df)
-                analysis_error_counter += 1
-                treated = True
-
-        if not treated and dir_name not in timed_out_tasks:
-            try:
-                svcomp_iteration_df, bottoms, opens = __compute_score(results_dir, dir_name)
-            except (OSError, json.JSONDecodeError) as e:
-                # jlisa did not produce a complete report (e.g., it was killed
-                # while writing it), without recording an error
-                rich.print(f"[red]No valid report for {dir_name}: {e}[/red]")
-                svcomp_iteration_df = __to_svcomp_table_entry(dir_name, "UNKNOWN (no report)", 0)
-                svcomp_scores = svcomp_scores._append(svcomp_iteration_df)
-                analysis_error_counter += 1
-                continue
-            for notice in bottoms:
-                all_bottoms.append((dir_name, notice.describe()))
-            for notice in opens:
-                all_opens.append((dir_name, notice.describe()))
-            svcomp_scores = svcomp_scores._append(svcomp_iteration_df)
-
+    # timed out runs: <task>/<property> for runs checking one property, <task> for runs checking all of them
     for t in timed_out_tasks:
-        svcomp_iteration_df = __to_svcomp_table_entry(t, "TIMEOUT", 0)
+        name, _, property_name = t.partition("/")
+        svcomp_iteration_df = __to_svcomp_table_entry(name, "TIMEOUT", 0, PROPERTIES.get(property_name))
         svcomp_scores = svcomp_scores._append(svcomp_iteration_df)
 
     svcomp_scores, bug_finding = __apply_bug_finding(svcomp_scores, output_dir)
@@ -175,7 +192,7 @@ def __apply_bug_finding(scores: DataFrame, output_dir: str) -> tuple[DataFrame, 
     ran = False
     for i, row in scores.iterrows():
         name, prop, expected = row["Test case"].split("|")
-        results_dir = os.path.join(output_dir, name)
+        results_dir = __results_of(output_dir, name, Property(prop))
         verdict = read_bug_finding(results_dir, Property(prop))
         ran = ran or verdict != ""
         if verdict != "FALSE":
@@ -187,10 +204,22 @@ def __apply_bug_finding(scores: DataFrame, output_dir: str) -> tuple[DataFrame, 
     return scores, ran
 
 
-def __to_svcomp_table_entry(file_name, virdict, score):
+def __results_of(output_dir: str, name: str, property: Property) -> str:
+    """
+    The results of the run checking the given property of the task: results/<task>/<property>, or results/<task>
+    for runs checking all the properties of the task.
+    """
+    results_dir = os.path.join(output_dir, name, SVCOMP_NAMES[property])
+    return results_dir if os.path.isdir(results_dir) else os.path.join(output_dir, name)
+
+
+def __to_svcomp_table_entry(file_name, virdict, score, only: Property | None = None):
+    """
+    The results of the task with the given verdict and score, for each of its properties (or only the given one).
+    """
     task: TaskDefinition = get_task(file_name)
     svcomp_data = []
-    if task.are_runtime_exceptions_expected() is not None:
+    if task.are_runtime_exceptions_expected() is not None and only in (None, Property.RUNTIME):
         svcomp_data.append(
             [
                 f"{file_name}|runtime|{task.are_runtime_exceptions_expected()}",
@@ -198,7 +227,7 @@ def __to_svcomp_table_entry(file_name, virdict, score):
                 score,
             ]
         )
-    if task.are_assertions_expected() is not None:
+    if task.are_assertions_expected() is not None and only in (None, Property.ASSERT):
         svcomp_data.append(
             [f"{file_name}|assert|{task.are_assertions_expected()}", virdict, score]
         )
@@ -227,7 +256,7 @@ def __add_row(temp, dataframe, test_case):
     return dataframe
 
 
-def __compute_score(results_dir: str, file_name: str) -> DataFrame:
+def __compute_score(results_dir: str, file_name: str, only: Property | None = None) -> DataFrame:
     task: TaskDefinition = get_task(file_name)
     with open(os.path.join(results_dir, "report.json"), encoding="utf-8") as f:
         lisa_report = LisaReport(**json.load(f))
@@ -245,7 +274,7 @@ def __compute_score(results_dir: str, file_name: str) -> DataFrame:
     )
 
     svcomp_data = []
-    if task.are_runtime_exceptions_expected() is not None:
+    if task.are_runtime_exceptions_expected() is not None and only in (None, Property.RUNTIME):
         svcomp_data.append(
             [
                 f"{file_name}|runtime|{task.are_runtime_exceptions_expected()}",
@@ -259,7 +288,7 @@ def __compute_score(results_dir: str, file_name: str) -> DataFrame:
                 possible_runtime,
             ]
         )
-    if task.are_assertions_expected() is not None:
+    if task.are_assertions_expected() is not None and only in (None, Property.ASSERT):
         svcomp_data.append(
             [
                 f"{file_name}|assert|{task.are_assertions_expected()}",

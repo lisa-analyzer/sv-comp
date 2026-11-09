@@ -37,15 +37,17 @@ def jlisa_verdict(results_dir: Path, property: Property) -> str:
     return classification.value[1]
 
 
-def run_bug_finding_fallback(config: Config, task: TaskDefinition, results_dir: Path, time_limit: int):
+def run_bug_finding_fallback(config: Config, task: TaskDefinition, results_dir: Path, time_limit: int,
+                             checked: list[str] | None = None):
     """
     The bug-finding fallback of `check`, on the results of the analysis of a task: for each property where jlisa
-    ends with UNKNOWN (or fails), jlisa-wit looks for a violation. Its witness replaces the one of jlisa in
+    ends with UNKNOWN (or fails), among the given property files (by default, all those of the task), jlisa-wit
+    looks for a violation. Its witness replaces the one of jlisa in
     witness/<property>/witness.yml (as in `check`, the witness of jlisa is only kept with FALSE), and its
     verdict and reason go to bug-finding/<property>.txt.
     """
     properties = {name: property for property, name in SVCOMP_NAMES.items()}
-    for property_file in property_files(task):
+    for property_file in checked if checked is not None else property_files(task):
         name = Path(property_file).stem
         if jlisa_verdict(results_dir, properties[name]) != "UNKNOWN":
             continue
