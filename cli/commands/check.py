@@ -138,26 +138,21 @@ def __validate_input_paths(inputs: list[str]) -> list[Path]:
 def __run_analysis(inputs: list[str], property_file: str | None, dump_graphs: bool,
                    z3: str | None) -> LisaReport | None:
     command = get_lisa_cmd(config, inputs, None, 10, property_files=[property_file] if property_file else None,
-                           dump_graphs=dump_graphs, z3=z3)
+                           dump_graphs=dump_graphs, z3=z3, verifier="Combined",
+                           log_level="INFO")
 
-    proc = subprocess.Popen(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
-    )
-    
     try:
-        # reads the output while waiting: a full pipe would block jlisa
-        _, errors = proc.communicate()
+        # jlisa writes to the stdout and stderr of the wrapper, so that whoever captures them also sees its
+        # output: what the wrapper printed so far is flushed first, to keep the order
+        sys.stdout.flush()
+        sys.stderr.flush()
+        proc = subprocess.run(command)
         if proc.returncode == 0:
             report_path = config.path_to_output_dir / "report.json"
             with open(report_path, encoding="utf-8") as f:
                 return LisaReport(**json.load(f))
         else:
             rich.print(f"[bold red]LiSA analysis failed with exit code {proc.returncode}[/bold red]")
-            if errors:
-                rich.print(f"[red]Error: {errors.strip()}[/red]")
         return None
     except Exception as e:
         rich.print(f"[bold red]An unexpected error occurred:[/bold red] {e}")
