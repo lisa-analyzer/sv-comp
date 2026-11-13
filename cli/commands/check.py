@@ -58,7 +58,12 @@ def check(
             None,
             "--z3",
             help="Path to the z3 executable that jlisa uses to verify its warnings (by default, the one shipped "
-                 "with the archive, if any, otherwise the one in the PATH)")):
+                 "with the archive, if any, otherwise the one in the PATH)"),
+        certification: bool = typer.Option(
+            True,
+            "--certification/--no-certification",
+            help="Let jlisa certify the counterexamples that its verification cannot confirm by validating their "
+                 "violation witnesses (running the program with their values); enabled by default")):
     """
     Check input files against a specified property
     """
@@ -77,7 +82,7 @@ def check(
     property_file = property if Path(property).is_file() else None
     if property_file is None:
         print(f"jlisa: {property} is not a property file, no violation witness is written", file=sys.stderr)
-    lisa_report = __run_analysis(inputs, property_file, dump_graphs, z3 or bundled_z3())
+    lisa_report = __run_analysis(inputs, property_file, dump_graphs, z3 or bundled_z3(), certification)
 
     # the time of the search of the bug-finding fallback, or None without it
     time_limit = bug_finding_time_limit if bug_finding_fallback else None
@@ -136,10 +141,10 @@ def __validate_input_paths(inputs: list[str]) -> list[Path]:
     return paths
 
 def __run_analysis(inputs: list[str], property_file: str | None, dump_graphs: bool,
-                   z3: str | None) -> LisaReport | None:
+                   z3: str | None, certification: bool) -> LisaReport | None:
     command = get_lisa_cmd(config, inputs, None, 10, property_files=[property_file] if property_file else None,
                            dump_graphs=dump_graphs, z3=z3, verifier="Combined",
-                           log_level="INFO")
+                           log_level="INFO", certification=certification)
 
     try:
         # jlisa writes to the stdout and stderr of the wrapper, so that whoever captures them also sees its

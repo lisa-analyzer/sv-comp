@@ -146,10 +146,10 @@ def analyse(
     ] = False,
     certification: Annotated[
         bool,
-        typer.Option("--certification", help="Let jlisa certify the counterexamples that its verification cannot "
-                                             "confirm by validating their violation witnesses (running the "
-                                             "program with their values)"),
-    ] = False,
+        typer.Option("--certification/--no-certification",
+                     help="Let jlisa certify the counterexamples that its verification cannot confirm by validating "
+                          "their violation witnesses (running the program with their values); enabled by default"),
+    ] = True,
 ):
     """
     Sends collected tasks to the LiSA instance for analysis
