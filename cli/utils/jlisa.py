@@ -62,7 +62,8 @@ def run_name(task: TaskDefinition, property_file: str) -> str:
 def get_lisa_cmd(
     config: Config, input_files: list[str], file_name: str, max_memory: int, debug: bool = False,
     property_files: list[str] | None = None, dump_graphs: bool = False, z3: str | None = None,
-    verifier: str = "Reachability", time_limit: int | None = None, log_level: str = "ERROR"
+    verifier: str = "Reachability", time_limit: int | None = None, log_level: str = "ERROR",
+    certification: bool = False
 ) -> list[str]:
     """
     Get the command to run LiSA from the configuration file, as a list of arguments. With debug, jlisa
@@ -74,6 +75,9 @@ def get_lisa_cmd(
     With time_limit (in seconds), jlisa ends the verification of its warnings in time to write its results
     within that time (warnings not verified by then stay possible).
     The log level is the one of the logs that jlisa prints (e.g. ERROR or INFO).
+    With certification, jlisa certifies the counterexamples that its verification cannot confirm by validating
+    their violation witnesses (running the program with their values), confirming the warnings whose witnesses
+    are correct.
     For each property file, jlisa also writes the violation witness of a definite violation of that property,
     to witness/<property>/witness.yml in the output directory.
 
@@ -81,7 +85,7 @@ def get_lisa_cmd(
         java -Xmx<max_memory>G -cp <path_to_lisa_instance> it.unive.jlisa.Main check
             -s <input-1> <...> <input-N> -o <output-dir>
             -n <numerical_domain> -m Statistics -c Assert -t <verifier> -l <log_level> [-d -e] [--dump-graphs]
-            [--z3 <z3>] [--time-limit <time_limit>]
+            [--z3 <z3>] [--time-limit <time_limit>] [--certification]
             [--svcomp-property <property-file-1> <...> --svcomp-property <property-file-N>]
     """
     out = (
@@ -105,7 +109,9 @@ def get_lisa_cmd(
         "-l", log_level,
     ] + (["-d", "-e"] if debug else []) + (["--dump-graphs"] if dump_graphs else []) + (
         ["--z3", z3] if z3 else []
-    ) + (["--time-limit", str(time_limit)] if time_limit else []) + [
+    ) + (["--time-limit", str(time_limit)] if time_limit else []) + (
+        ["--certification"] if certification else []
+    ) + [
         arg for property_file in (property_files or []) for arg in ("--svcomp-property", property_file)
     ]
 

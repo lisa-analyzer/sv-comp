@@ -52,6 +52,7 @@ class WorkerTask:
         dump_graphs: bool,
         z3: str | None,
         verifier: str,
+        certification: bool,
     ):
         self.task = task
         # the property checked by this analysis: as in SV-COMP, each property of a task is checked by a run of
@@ -71,6 +72,8 @@ class WorkerTask:
         self.z3 = z3
         # the verifier that jlisa uses to verify its warnings
         self.verifier = verifier
+        # whether jlisa certifies the counterexamples it cannot confirm by validating their witnesses
+        self.certification = certification
 
 
 @cli.command()
@@ -141,6 +144,12 @@ def analyse(
                                             "to model checking with z3 (by default, only through the results of "
                                             "the analysis)"),
     ] = False,
+    certification: Annotated[
+        bool,
+        typer.Option("--certification", help="Let jlisa certify the counterexamples that its verification cannot "
+                                             "confirm by validating their violation witnesses (running the "
+                                             "program with their values)"),
+    ] = False,
 ):
     """
     Sends collected tasks to the LiSA instance for analysis
@@ -179,7 +188,7 @@ def analyse(
             tsk = WorkerTask(
                 task, property_file, start_time, timeout, max_memory, timed_out, total_tasks, i, lock,
                 bug_finding_time_limit if bug_finding_fallback else None, dump_graphs, z3,
-                "Combined" if combined_pdr else "Reachability"
+                "Combined" if combined_pdr else "Reachability", certification
             )
             i += 1
             executor.submit(__perform_analysis, tsk)
@@ -201,7 +210,7 @@ def __perform_analysis(task: WorkerTask):
     command = get_lisa_cmd(
         config, str(task.task.input_file).split(), f"results/{run}", task.max_memory,
         debug=True, property_files=[task.property_file], dump_graphs=task.dump_graphs, z3=task.z3,
-        verifier=task.verifier, time_limit=task.timeout
+        verifier=task.verifier, time_limit=task.timeout, certification=task.certification
     )
 
     rich.print(
